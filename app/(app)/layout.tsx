@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AppHeader } from "@/components/common/AppHeader";
 import { BottomNav } from "@/components/common/BottomNav";
 import { requireMember } from "@/lib/guards/requireMember";
+import { unreadCount } from "@/lib/notifications/queries";
 import { getPublicUrl } from "@/lib/storage";
 
 /**
@@ -16,11 +17,13 @@ import { getPublicUrl } from "@/lib/storage";
 async function getHeaderContext() {
   try {
     const me = await requireMember();
+    const unread = await unreadCount(me).catch(() => 0);
     return {
       name: me.profile.name,
       photoSrc: me.profile.photo_path ? getPublicUrl(me.profile.photo_path) : null,
       profileId: me.profile.id,
       isAdmin: me.isAdmin,
+      unread,
     };
   } catch {
     return null;

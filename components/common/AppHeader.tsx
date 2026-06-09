@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ExternalLink, Shield, User } from "lucide-react";
+import { Bell, ExternalLink, Shield, User } from "lucide-react";
 
 import { LogoutButton } from "@/components/profile/LogoutButton";
 import { Avatar } from "@/components/profile/Avatar";
@@ -31,11 +31,13 @@ export function AppHeader({
   photoSrc,
   profileId,
   isAdmin,
+  unread = 0,
 }: {
   name: string;
   photoSrc: string | null;
   profileId: string;
   isAdmin: boolean;
+  unread?: number;
 }) {
   const pathname = usePathname();
   if (HIDDEN_PREFIXES.some((p) => pathname.startsWith(p))) return null;
@@ -51,7 +53,19 @@ export function AppHeader({
           한림 MICE
         </Link>
 
-        <Dialog>
+        <div className="flex items-center gap-1">
+          <Link
+            href="/notifications"
+            aria-label={unread > 0 ? `알림 ${unread}개` : "알림"}
+            className="relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Bell className="h-5 w-5" />
+            {unread > 0 ? (
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
+            ) : null}
+          </Link>
+
+          <Dialog>
           <DialogTrigger asChild>
             <button
               type="button"
@@ -81,6 +95,7 @@ export function AppHeader({
             <LogoutButton variant="outline" className="mt-2 w-full" />
           </DialogContent>
         </Dialog>
+        </div>
       </div>
     </header>
   );
