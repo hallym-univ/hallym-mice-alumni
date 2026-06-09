@@ -21,7 +21,12 @@ export function LoginButton() {
     setLoading(true);
     const supabase = createClient();
     const next = searchParams.get("next") ?? "/home";
-    const redirectTo = `${publicEnv.siteUrl}/auth/callback?next=${encodeURIComponent(next)}`;
+    // 사용자가 실제 접속한 도메인을 기준으로 콜백을 만든다(브라우저라 origin이 항상 정확).
+    // 빌드타임 SITE_URL이 틀리거나 도메인이 바뀌어도 로그인 루프가 생기지 않게 하는 안전장치.
+    // SSR/비브라우저 폴백으로만 publicEnv.siteUrl 사용.
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : publicEnv.siteUrl;
+    const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
