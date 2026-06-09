@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LogoutButton } from "@/components/profile/LogoutButton";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -44,12 +45,6 @@ export function AccountSettings({ isPublic }: { isPublic: boolean }) {
     }
   }
 
-  async function logout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    window.location.href = "/login";
-  }
-
   return (
     <div className="space-y-3">
       <div className="rounded-lg border p-4">
@@ -70,9 +65,7 @@ export function AccountSettings({ isPublic }: { isPublic: boolean }) {
         </Button>
       </div>
 
-      <Button variant="outline" className="w-full" onClick={logout}>
-        로그아웃
-      </Button>
+      <LogoutButton variant="outline" className="w-full" />
 
       {/* 위험 영역 */}
       <div className="rounded-lg border border-destructive/40 p-4">

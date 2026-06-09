@@ -3,19 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Home, User, Users } from "lucide-react";
+import { Briefcase, Home, User, Users } from "lucide-react";
 
 import { TABS } from "@/lib/messages";
 import { cn } from "@/lib/utils";
 
 /**
- * 하단 고정 3탭 네비게이션 (§5.1): 홈 / 동문 / 내 정보.
+ * 하단 고정 4탭 네비게이션 (§5.1): 홈 / 동문 / 기회 / 내 정보.
  * 모바일 우선(375px). 터치 타깃 44px 이상.
  * 온보딩 등 풀스크린 라우트에서는 자동으로 숨긴다.
+ *
+ * IA 결정: 콘텐츠(/content)·행사기록(/albums)은 탭이 아니다 — 열람 빈도가 낮아
+ * 홈 허브 카드 + 헤더 메뉴로 진입한다(5탭 과밀·"더보기 탭" 회피). 구인구직(기회)은
+ * 재학생 핵심 유틸리티라 탭으로 승격. 미래 운영진이 IA를 바꾸려면 이 주석을 보라.
  */
 const ITEMS = [
   { href: "/home", label: TABS.home, icon: Home },
   { href: "/alumni", label: TABS.alumni, icon: Users },
+  { href: "/jobs", label: TABS.jobs, icon: Briefcase },
   { href: "/me", label: TABS.me, icon: User },
 ] as const;
 

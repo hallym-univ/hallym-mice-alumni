@@ -46,11 +46,21 @@ export const CONSENT = {
   required: "필수 항목에 모두 동의해야 가입할 수 있어요.",
 } as const;
 
-/** 하단 탭 라벨. */
+/** 하단 탭 라벨(4탭: 홈/동문/기회/내 정보). */
 export const TABS = {
   home: "홈",
   alumni: "동문",
+  jobs: "기회",
   me: "내 정보",
+} as const;
+
+/**
+ * 비탭 섹션 라벨 — 홈 허브 카드·헤더 메뉴에서 진입(하단 탭 아님).
+ * 콘텐츠/행사기록은 열람 빈도가 낮아 탭을 차지하지 않는다(5탭 과밀 방지).
+ */
+export const SECTIONS = {
+  content: "콘텐츠",
+  gallery: "행사 기록",
 } as const;
 
 export type EmptyMessage = (typeof EMPTY)[keyof typeof EMPTY];

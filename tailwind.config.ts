@@ -57,6 +57,35 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        // 본문/UI = Pretendard, 디스플레이 = Instrument Serif (app/layout.tsx next/font)
+        sans: [
+          "var(--font-sans)",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Apple SD Gothic Neo",
+          "Noto Sans KR",
+          "sans-serif",
+        ],
+        display: ["var(--font-display)", "Georgia", "serif"],
+      },
+      fontSize: {
+        // 에디토리얼 타이포 스케일 — clamp 기반 반응형(데스크톱 풀 랜딩용)
+        "display-1": [
+          "clamp(2.75rem, 7vw, 5.5rem)",
+          { lineHeight: "0.95", letterSpacing: "-0.03em" },
+        ],
+        "display-2": [
+          "clamp(2rem, 5vw, 3.5rem)",
+          { lineHeight: "1.0", letterSpacing: "-0.025em" },
+        ],
+        headline: [
+          "clamp(1.5rem, 3vw, 2.25rem)",
+          { lineHeight: "1.1", letterSpacing: "-0.02em" },
+        ],
+        title: ["1.25rem", { lineHeight: "1.3", letterSpacing: "-0.01em" }],
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -66,10 +95,30 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "fade-up": {
+          from: { opacity: "0", transform: "translateY(18px)" },
+          to: { opacity: "1", transform: "none" },
+        },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "gradient-drift": {
+          "0%, 100%": { transform: "translate3d(0, 0, 0) scale(1)" },
+          "50%": { transform: "translate3d(2%, -3%, 0) scale(1.08)" },
+        },
+        marquee: {
+          from: { transform: "translateX(0)" },
+          to: { transform: "translateX(-50%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-up": "fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "fade-in": "fade-in 0.7s ease-out both",
+        "gradient-drift": "gradient-drift 16s ease-in-out infinite",
+        marquee: "marquee 32s linear infinite",
       },
     },
   },
