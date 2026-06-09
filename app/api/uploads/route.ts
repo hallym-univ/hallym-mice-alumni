@@ -7,16 +7,17 @@ import { uploadContentTypeSchema } from "@/lib/validators";
 /**
  * POST /api/uploads — R2 presigned PUT URL 발급 (T-154 / §6.5-2, §9.2).
  *
- * 관리자만 호출 가능(requireAdmin). 갤러리 이미지는 운영자 큐레이션이므로
- * 사용자 자유 업로드 경로는 만들지 않는다(§6.5-3).
+ * 회원은 본인 프로필 사진(scope: "profile")만 업로드할 수 있다.
+ * 운영 자산(album/cover/content)은 관리자만(아래 게이트). 갤러리 이미지는
+ * 운영자 큐레이션이므로 사용자 자유 업로드 경로는 만들지 않는다(§6.5-3).
  *
- * 요청 body: { contentType: "image/jpeg" | ... , scope?: "album" | "cover" }
+ * 요청 body: { contentType: "image/jpeg" | ... , scope?: "profile" | "album" | "cover" | "content" }
  * 응답: { url, key } — 클라가 url 로 직접 PUT(서버 대역폭 0) 후 key 를 DB 저장에 사용.
  *
  * R2 객체 key 는 서버에서 생성한다(클라가 임의 경로를 지정하지 못하게 함).
  */
 export const POST = withAuth(
-  async (req) => {
+  async (req, { me }) => {
     let body: unknown;
     try {
       body = await req.json();
@@ -37,13 +38,22 @@ export const POST = withAuth(
       );
     }
 
+    const scopeStr = typeof scope === "string" ? scope : "album";
+
+    // 회원은 본인 프로필 사진(profile)만, 운영 자산(album/cover/content)은 관리자만.
+    if (scopeStr !== "profile" && !me.isAdmin) {
+      return Response.json({ error: "권한이 없어요." }, { status: 403 });
+    }
+
     const ext = mimeToExt(parsed.data);
     const prefix =
-      scope === "cover"
+      scopeStr === "cover"
         ? "albums/covers"
-        : scope === "content"
+        : scopeStr === "content"
           ? "content/covers"
-          : "albums/images";
+          : scopeStr === "profile"
+            ? "profiles"
+            : "albums/images";
     const key = `${prefix}/${randomUUID()}.${ext}`;
 
     try {
@@ -59,7 +69,7 @@ export const POST = withAuth(
       );
     }
   },
-  { role: "admin" },
+  { role: "member" },
 );
 
 function mimeToExt(mime: string): string {

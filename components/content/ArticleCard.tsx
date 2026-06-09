@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { GradientCover } from "@/components/common/GradientCover";
 import { formatDate } from "@/lib/labels";
 import type { ArticleListItem } from "@/lib/content/types";
 
@@ -20,7 +21,13 @@ export function ArticleCard({ article }: { article: ArticleListItem }) {
             alt=""
             className="aspect-[16/9] w-full object-cover"
           />
-        ) : null}
+        ) : (
+          <GradientCover
+            seed={article.id}
+            label={article.title}
+            className="aspect-[16/9] w-full"
+          />
+        )}
         <div className="p-4">
           <h3 className="font-semibold leading-snug">{article.title}</h3>
           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">

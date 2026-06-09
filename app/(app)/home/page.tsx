@@ -1,31 +1,35 @@
 import Link from "next/link";
 
-import { Briefcase, ChevronRight, FileText, Images, Sparkles } from "lucide-react";
+import { ChevronRight, Eye, Sparkles, Users } from "lucide-react";
 
 import { ProfileCard } from "@/components/alumni/ProfileCard";
+import { JobCard } from "@/components/jobs/JobCard";
+import { ArticleCard } from "@/components/content/ArticleCard";
+import { AlbumGrid } from "@/components/albums/AlbumGrid";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/common/EmptyState";
 import { requireMemberPage } from "@/lib/guards/page";
 import { listDirectory } from "@/lib/profile/queries";
+import { listPublishedJobs } from "@/lib/jobs/queries";
+import { listPublishedArticles } from "@/lib/content/public";
+import { listPublicAlbums } from "@/lib/albums/public";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
- * 홈 (§6.6 / §11 / T-152 lite).
- * 추천 동문(최근 업데이트) + 본인 관련 신호(내 프로필 조회수) + 행사 기록(갤러리) 진입점.
+ * 홈 — 콘텐츠 허브 (§6.6 / §11).
+ * 본인 신호(조회수·기수) + 새로운 기회(공고) + 동문 이야기(콘텐츠) + 추천 동문 + 행사 기록.
+ * 단순 추천을 넘어 "볼거리"를 모아 보여준다.
  */
 export default async function HomePage() {
   const me = await requireMemberPage("/home");
-
   const admin = createAdminClient();
 
-  // 본인 관련 신호: 내 프로필 조회수(profile_view, target=내 프로필).
   const { count: viewCount } = await admin
     .from("events")
     .select("id", { count: "exact", head: true })
     .eq("event_type", "profile_view")
     .eq("target_id", me.profile.id);
 
-  // 우리 기수 신규(같은 졸업연도, 최근).
   let cohortNewCount = 0;
   if (me.profile.graduation_year) {
     const { count } = await admin
@@ -38,62 +42,52 @@ export default async function HomePage() {
     cohortNewCount = count ?? 0;
   }
 
-  // 추천 동문(최근 업데이트 6명).
-  const directory = await listDirectory(me, { limit: 6 });
-  const recommended = directory.items.filter((p) => p.id !== me.profile.id).slice(0, 5);
+  const [directory, jobsRes, articles, albums] = await Promise.all([
+    listDirectory(me, { limit: 6 }),
+    listPublishedJobs(me, { limit: 3 }),
+    listPublishedArticles(),
+    listPublicAlbums(),
+  ]);
+
+  const recommended = directory.items
+    .filter((p) => p.id !== me.profile.id)
+    .slice(0, 4);
+  const latestJobs = jobsRes.items.slice(0, 3);
+  const latestArticles = articles.slice(0, 3);
+  const recentAlbums = albums.slice(0, 4);
 
   return (
-    <div className="px-5 py-5">
+    <div className="space-y-9 px-5 py-6">
       <header>
-        <p className="text-sm text-muted-foreground">안녕하세요,</p>
-        <h1 className="text-xl font-bold">{me.profile.name} 님</h1>
+        <p className="text-sm text-muted-foreground">반가워요,</p>
+        <h1 className="text-2xl font-bold tracking-tight">{me.profile.name} 님</h1>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <Stat icon={Eye} label="내 프로필 조회" value={viewCount ?? 0} />
+          <Stat icon={Users} label="우리 기수 동문" value={cohortNewCount} />
+        </div>
       </header>
 
-      {/* 본인 관련 신호 */}
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">내 프로필 조회</p>
-          <p className="mt-1 text-2xl font-bold">{viewCount ?? 0}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">우리 기수 동문</p>
-          <p className="mt-1 text-2xl font-bold">{cohortNewCount}</p>
-        </Card>
-      </div>
+      {latestJobs.length > 0 ? (
+        <Section title="새로운 기회" href="/jobs">
+          <div className="space-y-3">
+            {latestJobs.map((j) => (
+              <JobCard key={j.id} job={j} />
+            ))}
+          </div>
+        </Section>
+      ) : null}
 
-      {/* 바로가기 허브 — 기회/콘텐츠/행사 기록(하단 탭이 아닌 섹션, IA 결정 §G) */}
-      <div className="mt-3 space-y-2">
-        <HubCard
-          href="/jobs"
-          icon={Briefcase}
-          title="기회"
-          desc="채용·공모·프로젝트 공고"
-        />
-        <HubCard
-          href="/content"
-          icon={FileText}
-          title="콘텐츠"
-          desc="동문 인터뷰·소식"
-        />
-        <HubCard
-          href="/albums"
-          icon={Images}
-          title="행사 기록"
-          desc="동문 행사 사진·영상 갤러리"
-        />
-      </div>
+      {latestArticles.length > 0 ? (
+        <Section title="동문 이야기" href="/content">
+          <div className="space-y-3">
+            {latestArticles.map((a) => (
+              <ArticleCard key={a.id} article={a} />
+            ))}
+          </div>
+        </Section>
+      ) : null}
 
-      {/* 추천 동문 */}
-      <section className="mt-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-1.5 font-semibold">
-            <Sparkles className="h-4 w-4 text-primary" />
-            추천 동문
-          </h2>
-          <Link href="/alumni" className="text-xs text-muted-foreground">
-            전체 보기
-          </Link>
-        </div>
+      <Section title="추천 동문" href="/alumni" accent>
         {recommended.length === 0 ? (
           <EmptyState
             title="아직 추천할 동문이 없어요"
@@ -106,34 +100,64 @@ export default async function HomePage() {
             ))}
           </div>
         )}
-      </section>
+      </Section>
+
+      {recentAlbums.length > 0 ? (
+        <Section title="행사 기록" href="/albums">
+          <AlbumGrid albums={recentAlbums} />
+        </Section>
+      ) : null}
     </div>
   );
 }
 
-function HubCard({
-  href,
+function Stat({
   icon: Icon,
-  title,
-  desc,
+  label,
+  value,
 }: {
-  href: string;
   icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  desc: string;
+  label: string;
+  value: number;
 }) {
   return (
-    <Link href={href} className="block">
-      <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-accent/40">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-          <Icon className="h-5 w-5 text-muted-foreground" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold">{title}</p>
-          <p className="text-xs text-muted-foreground">{desc}</p>
-        </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-      </Card>
-    </Link>
+    <Card className="p-4">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
+    </Card>
+  );
+}
+
+function Section({
+  title,
+  href,
+  accent = false,
+  children,
+}: {
+  title: string;
+  href: string;
+  accent?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="flex items-center gap-1.5 text-lg font-bold tracking-tight">
+          {accent ? <Sparkles className="h-4 w-4 text-primary" /> : null}
+          {title}
+        </h2>
+        <Link
+          href={href}
+          className="flex items-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          전체 보기
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+      {children}
+    </section>
   );
 }

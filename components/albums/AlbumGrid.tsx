@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { GradientCover } from "@/components/common/GradientCover";
 import { r2PublicUrl } from "@/lib/utils";
 import type { AlbumRow } from "@/types/database";
 
@@ -27,9 +28,11 @@ export function AlbumGrid({ albums }: { albums: AlbumRow[] }) {
                     className="object-cover"
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                    이미지 없음
-                  </div>
+                  <GradientCover
+                    seed={a.id}
+                    label={a.title}
+                    className="absolute inset-0 h-full w-full"
+                  />
                 )}
               </div>
               <CardContent className="p-3">

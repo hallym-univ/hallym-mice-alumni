@@ -2,6 +2,11 @@
 
 import { useMemo, useState } from "react";
 
+import { useRouter } from "next/navigation";
+
+import { Avatar } from "@/components/profile/Avatar";
+import { useImageUpload } from "@/components/admin/useImageUpload";
+import { r2PublicUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,9 +89,20 @@ export function ProfileEditor({
     initial.field_visibility ?? {},
   );
   const [tagIds, setTagIds] = useState<string[]>(initial.tag_ids);
+  const [photoPath, setPhotoPath] = useState<string | null>(
+    initial.photo_path ?? null,
+  );
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const router = useRouter();
+  const { upload, uploading, error: uploadError } = useImageUpload();
+
+  async function onPickPhoto(file: File) {
+    const key = await upload(file, "profile");
+    if (key) setPhotoPath(key);
+  }
 
   const progress = useMemo(() => {
     const checks = [
@@ -133,6 +149,7 @@ export function ProfileEditor({
       coffeechat_status: form.coffeechat_status,
       open_kakao_url: form.open_kakao_url,
       proposal_email_allowed: form.proposal_email_allowed,
+      photo_path: photoPath,
       is_public: form.is_public,
       field_visibility: visibility,
       tag_ids: tagIds,
@@ -152,6 +169,7 @@ export function ProfileEditor({
         return;
       }
       setState("saved");
+      router.refresh();
       setTimeout(() => setState("idle"), 2000);
     } catch {
       setError("저장에 실패했어요.");
@@ -196,6 +214,58 @@ export function ProfileEditor({
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
+
+      {/* 프로필 사진 */}
+      <Section title="프로필 사진">
+        <div className="flex items-center gap-4">
+          {photoPath ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={r2PublicUrl(photoPath)}
+              alt="프로필 사진"
+              className="h-20 w-20 rounded-full object-cover"
+            />
+          ) : (
+            <Avatar src={null} name={form.name || initial.name} size={80} />
+          )}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer">
+                <span className="inline-flex h-10 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                  {uploading ? "업로드 중..." : photoPath ? "사진 변경" : "사진 업로드"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void onPickPhoto(f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {photoPath ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPhotoPath(null)}
+                >
+                  삭제
+                </Button>
+              ) : null}
+            </div>
+            {uploadError ? (
+              <p className="text-xs text-destructive">{uploadError}</p>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              정사각형 이미지를 권장해요. 변경 후 아래 저장하기를 눌러주세요.
+            </p>
+          </div>
+        </div>
+      </Section>
 
       {/* 1단계 기본 */}
       <Section title="기본 정보">

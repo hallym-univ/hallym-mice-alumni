@@ -18,3 +18,15 @@ export function r2PublicUrl(key: string): string {
   const cleanKey = key.replace(/^\/+/, "");
   return `${base}/${cleanKey}`;
 }
+
+/**
+ * 문자열 → 결정적 hue(0~359). 사진이 없는 아바타/커버에 일관된 색을 부여한다.
+ * 같은 이름/제목은 항상 같은 색 → 시각적 정체성 유지(랜덤 아님).
+ */
+export function seedHue(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) % 360;
+  }
+  return h;
+}

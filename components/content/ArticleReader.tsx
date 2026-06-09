@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/profile/Avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { GradientCover } from "@/components/common/GradientCover";
 import { formatDate } from "@/lib/labels";
 import type { ArticleDetail } from "@/lib/content/types";
 
@@ -20,7 +21,13 @@ export function ArticleReader({ article }: { article: ArticleDetail }) {
           alt=""
           className="aspect-[16/9] w-full rounded-lg border object-cover"
         />
-      ) : null}
+      ) : (
+        <GradientCover
+          seed={article.id}
+          label={article.title}
+          className="aspect-[16/9] w-full rounded-lg border"
+        />
+      )}
 
       <h1 className="mt-5 text-headline font-bold">{article.title}</h1>
       <p className="mt-2 text-xs text-muted-foreground">

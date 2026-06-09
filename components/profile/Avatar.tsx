@@ -1,5 +1,5 @@
 import { initials } from "@/lib/labels";
-import { cn } from "@/lib/utils";
+import { cn, seedHue } from "@/lib/utils";
 
 /**
  * 프로필 아바타 (이름 이니셜 폴백, §6.2 신뢰 시각화).
@@ -32,14 +32,21 @@ export function Avatar({
       />
     );
   }
+  // 사진이 없으면 이름 기반 결정적 그라데이션 + 흰 이니셜(회색 명단처럼 보이지 않게).
+  const hue = seedHue(name);
   return (
     <div
       aria-hidden
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground",
+        "flex shrink-0 items-center justify-center rounded-full font-semibold text-white",
         className,
       )}
-      style={{ width: size, height: size, fontSize: Math.round(size / 2.6) }}
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size / 2.6),
+        backgroundImage: `linear-gradient(135deg, hsl(${hue} 68% 52%), hsl(${(hue + 38) % 360} 70% 42%))`,
+      }}
     >
       {initials(name)}
     </div>
