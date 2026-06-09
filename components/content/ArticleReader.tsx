@@ -40,7 +40,7 @@ export function ArticleReader({ article }: { article: ArticleDetail }) {
         {article.summary}
       </p>
 
-      <div className="prose prose-neutral mt-6 max-w-none prose-headings:tracking-tight prose-a:text-primary prose-img:rounded-lg">
+      <div className="prose prose-neutral mt-6 max-w-none prose-headings:tracking-tight prose-a:text-primary prose-code:before:content-none prose-code:after:content-none prose-img:rounded-lg">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.body}</ReactMarkdown>
       </div>
 

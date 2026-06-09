@@ -149,7 +149,7 @@ export function MarkdownEditor({
           className="block w-full resize-y bg-transparent p-3 text-sm leading-relaxed outline-none"
         />
       ) : (
-        <div className="prose prose-sm prose-neutral min-h-[8rem] max-w-none p-3 prose-img:rounded-lg prose-a:text-primary">
+        <div className="prose prose-sm prose-neutral min-h-[8rem] max-w-none p-3 prose-a:text-primary prose-code:before:content-none prose-code:after:content-none prose-img:rounded-lg">
           {value.trim() ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
           ) : (
