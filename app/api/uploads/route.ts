@@ -38,7 +38,12 @@ export const POST = withAuth(
     }
 
     const ext = mimeToExt(parsed.data);
-    const prefix = scope === "cover" ? "albums/covers" : "albums/images";
+    const prefix =
+      scope === "cover"
+        ? "albums/covers"
+        : scope === "content"
+          ? "content/covers"
+          : "albums/images";
     const key = `${prefix}/${randomUUID()}.${ext}`;
 
     try {

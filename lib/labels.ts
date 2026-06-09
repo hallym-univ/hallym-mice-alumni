@@ -1,4 +1,5 @@
 import type {
+  ArticleStatus,
   CoffeechatStatus,
   EmploymentStatus,
   JobStatus,
@@ -117,6 +118,23 @@ export const JOB_STATUS_TONE: Record<
   pending: "secondary",
   published: "success",
   closed: "outline",
+  hidden: "destructive",
+};
+
+// ── 콘텐츠(Phase 3) ───────────────────────────────────────────────────────────
+
+export const ARTICLE_STATUS_LABEL: Record<ArticleStatus, string> = {
+  draft: "임시저장",
+  published: "게시중",
+  hidden: "숨김",
+};
+
+export const ARTICLE_STATUS_TONE: Record<
+  ArticleStatus,
+  "success" | "secondary" | "destructive"
+> = {
+  draft: "secondary",
+  published: "success",
   hidden: "destructive",
 };
 

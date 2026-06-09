@@ -20,7 +20,7 @@ export function useImageUpload() {
 
   async function upload(
     file: File,
-    scope: "album" | "cover" = "album",
+    scope: "album" | "cover" | "content" = "album",
   ): Promise<string | null> {
     setError(null);
     if (!ALLOWED.includes(file.type)) {
