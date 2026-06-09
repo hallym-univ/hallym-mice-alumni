@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import Link from "next/link";
+
+import { ChevronRight } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -31,6 +35,10 @@ function titleOf(n: NotificationRow): string {
 function messageOf(n: NotificationRow): string | null {
   const m = n.payload?.message;
   return typeof m === "string" && m ? m : null;
+}
+function linkOf(n: NotificationRow): string | null {
+  const l = n.payload?.link;
+  return typeof l === "string" && l.startsWith("/") ? l : null;
 }
 
 export function NotificationList() {
@@ -115,39 +123,56 @@ export function NotificationList() {
         {items.map((n) => {
           const unread = !n.read_at;
           const message = messageOf(n);
+          const link = linkOf(n);
+          const card = (
+            <Card
+              className={cn(
+                "flex items-start gap-3 p-4 transition-colors hover:bg-accent/40",
+                unread && "border-primary/40 bg-primary/5",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                  unread ? "bg-primary" : "bg-transparent",
+                )}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{titleOf(n)}</p>
+                {message ? (
+                  <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+                    {message}
+                  </p>
+                ) : null}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatDate(n.created_at)}
+                </p>
+              </div>
+              {link ? (
+                <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+              ) : null}
+            </Card>
+          );
           return (
             <li key={n.id}>
-              <button
-                type="button"
-                onClick={() => void markOne(n)}
-                className="block w-full text-left"
-              >
-                <Card
-                  className={cn(
-                    "flex items-start gap-3 p-4 transition-colors hover:bg-accent/40",
-                    unread && "border-primary/40 bg-primary/5",
-                  )}
+              {link ? (
+                <Link
+                  href={link}
+                  onClick={() => void markOne(n)}
+                  className="block"
                 >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                      unread ? "bg-primary" : "bg-transparent",
-                    )}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{titleOf(n)}</p>
-                    {message ? (
-                      <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
-                        {message}
-                      </p>
-                    ) : null}
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDate(n.created_at)}
-                    </p>
-                  </div>
-                </Card>
-              </button>
+                  {card}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void markOne(n)}
+                  className="block w-full text-left"
+                >
+                  {card}
+                </button>
+              )}
             </li>
           );
         })}
