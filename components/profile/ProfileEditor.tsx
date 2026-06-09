@@ -96,12 +96,40 @@ export function ProfileEditor({
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoMsg, setPhotoMsg] = useState<string | null>(null);
+
   const router = useRouter();
   const { upload, uploading, error: uploadError } = useImageUpload();
 
+  // 프로필 사진은 별도 저장 없이 즉시 적용한다(업로드/삭제 → 바로 PATCH photo_path).
+  async function persistPhoto(nextPath: string | null): Promise<void> {
+    setPhotoBusy(true);
+    setPhotoMsg(null);
+    try {
+      const res = await fetch("/api/profiles/me", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ photo_path: nextPath }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setPhotoMsg(d.error ?? "사진 저장에 실패했어요.");
+        return;
+      }
+      setPhotoPath(nextPath);
+      setPhotoMsg(nextPath ? "사진을 적용했어요." : "사진을 삭제했어요.");
+      router.refresh();
+    } catch {
+      setPhotoMsg("사진 저장에 실패했어요.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   async function onPickPhoto(file: File) {
     const key = await upload(file, "profile");
-    if (key) setPhotoPath(key);
+    if (key) await persistPhoto(key);
   }
 
   const progress = useMemo(() => {
@@ -232,13 +260,19 @@ export function ProfileEditor({
             <div className="flex items-center gap-2">
               <label className="cursor-pointer">
                 <span className="inline-flex h-10 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
-                  {uploading ? "업로드 중..." : photoPath ? "사진 변경" : "사진 업로드"}
+                  {uploading
+                    ? "업로드 중..."
+                    : photoBusy
+                      ? "적용 중..."
+                      : photoPath
+                        ? "사진 변경"
+                        : "사진 업로드"}
                 </span>
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  disabled={uploading}
+                  disabled={uploading || photoBusy}
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (f) void onPickPhoto(f);
@@ -251,7 +285,8 @@ export function ProfileEditor({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setPhotoPath(null)}
+                  disabled={uploading || photoBusy}
+                  onClick={() => void persistPhoto(null)}
                 >
                   삭제
                 </Button>
@@ -260,8 +295,11 @@ export function ProfileEditor({
             {uploadError ? (
               <p className="text-xs text-destructive">{uploadError}</p>
             ) : null}
+            {photoMsg ? (
+              <p className="text-xs text-emerald-600">{photoMsg}</p>
+            ) : null}
             <p className="text-xs text-muted-foreground">
-              정사각형 이미지를 권장해요. 변경 후 아래 저장하기를 눌러주세요.
+              정사각형 이미지를 권장해요. 업로드하거나 삭제하면 바로 적용돼요.
             </p>
           </div>
         </div>
