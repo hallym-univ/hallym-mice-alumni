@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { ChevronRight, Images, Sparkles } from "lucide-react";
+import { Briefcase, ChevronRight, FileText, Images, Sparkles } from "lucide-react";
 
 import { ProfileCard } from "@/components/alumni/ProfileCard";
 import { Card } from "@/components/ui/card";
@@ -61,19 +61,27 @@ export default async function HomePage() {
         </Card>
       </div>
 
-      {/* 행사 기록(갤러리) 진입점 — Phase 1.5 */}
-      <Link href="/albums" className="mt-3 block">
-        <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-accent/40">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-            <Images className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold">행사 기록</p>
-            <p className="text-xs text-muted-foreground">동문 행사 사진·영상 갤러리</p>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </Card>
-      </Link>
+      {/* 바로가기 허브 — 기회/콘텐츠/행사 기록(하단 탭이 아닌 섹션, IA 결정 §G) */}
+      <div className="mt-3 space-y-2">
+        <HubCard
+          href="/jobs"
+          icon={Briefcase}
+          title="기회"
+          desc="채용·공모·프로젝트 공고"
+        />
+        <HubCard
+          href="/content"
+          icon={FileText}
+          title="콘텐츠"
+          desc="동문 인터뷰·소식"
+        />
+        <HubCard
+          href="/albums"
+          icon={Images}
+          title="행사 기록"
+          desc="동문 행사 사진·영상 갤러리"
+        />
+      </div>
 
       {/* 추천 동문 */}
       <section className="mt-6">
@@ -100,5 +108,32 @@ export default async function HomePage() {
         )}
       </section>
     </div>
+  );
+}
+
+function HubCard({
+  href,
+  icon: Icon,
+  title,
+  desc,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <Link href={href} className="block">
+      <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-accent/40">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+          <Icon className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">{title}</p>
+          <p className="text-xs text-muted-foreground">{desc}</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </Card>
+    </Link>
   );
 }

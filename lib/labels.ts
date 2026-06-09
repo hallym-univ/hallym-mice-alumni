@@ -1,6 +1,8 @@
 import type {
   CoffeechatStatus,
   EmploymentStatus,
+  JobStatus,
+  JobType,
   ProfileRole,
 } from "@/types/database";
 
@@ -75,6 +77,48 @@ export function initials(name: string): string {
   }
   return trimmed.slice(0, 2);
 }
+
+// ── 구인구직(Phase 2) ─────────────────────────────────────────────────────────
+
+export const JOB_TYPE_LABEL: Record<JobType, string> = {
+  fulltime: "정규직",
+  intern: "인턴",
+  parttime: "아르바이트",
+  project: "프로젝트",
+  industry: "산학협력",
+  contest: "공모전",
+  etc: "기타",
+};
+
+export const JOB_TYPE_OPTIONS: { value: JobType; label: string }[] = [
+  { value: "fulltime", label: JOB_TYPE_LABEL.fulltime },
+  { value: "intern", label: JOB_TYPE_LABEL.intern },
+  { value: "parttime", label: JOB_TYPE_LABEL.parttime },
+  { value: "project", label: JOB_TYPE_LABEL.project },
+  { value: "industry", label: JOB_TYPE_LABEL.industry },
+  { value: "contest", label: JOB_TYPE_LABEL.contest },
+  { value: "etc", label: JOB_TYPE_LABEL.etc },
+];
+
+export const JOB_STATUS_LABEL: Record<JobStatus, string> = {
+  draft: "임시저장",
+  pending: "승인 대기",
+  published: "게시중",
+  closed: "마감",
+  hidden: "숨김",
+};
+
+/** 공고 상태별 배지 톤. */
+export const JOB_STATUS_TONE: Record<
+  JobStatus,
+  "success" | "secondary" | "outline" | "destructive"
+> = {
+  draft: "outline",
+  pending: "secondary",
+  published: "success",
+  closed: "outline",
+  hidden: "destructive",
+};
 
 /** ISO 날짜 → "YYYY.MM.DD" 표기(프로필 신선도). */
 export function formatDate(iso: string): string {

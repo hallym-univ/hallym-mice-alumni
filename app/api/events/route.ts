@@ -17,6 +17,12 @@ const ALLOWED: ReadonlySet<EventType> = new Set<EventType>([
   "profile_view",
   "coffeechat_click",
   "proposal_email_click",
+  // Phase 2/3 — 클라이언트가 기록하는 공고/콘텐츠 클릭.
+  "job_view",
+  "job_apply_click",
+  "job_bookmark",
+  "article_view",
+  "newsletter_click",
 ]);
 
 export const POST = withAuth(

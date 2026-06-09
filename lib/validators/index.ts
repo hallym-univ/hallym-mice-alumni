@@ -329,3 +329,100 @@ export const reportSchema = z.object({
 export const blockSchema = z.object({
   target_profile_id: z.string().uuid(),
 });
+
+// ── Phase 2 — 구인구직(jobs) ───────────────────────────────────────────────────
+
+/** 공고 유형. */
+export const jobTypeSchema = z.enum([
+  "fulltime",
+  "intern",
+  "parttime",
+  "project",
+  "industry",
+  "contest",
+  "etc",
+]);
+
+/** 공고 상태머신(draft→pending→published→closed/hidden). 관리자/작성자 전환용. */
+export const jobStatusSchema = z.enum([
+  "draft",
+  "pending",
+  "published",
+  "closed",
+  "hidden",
+]);
+
+/**
+ * 공고 생성/수정 입력.
+ * 보안: status/author_id 는 스키마에 "존재하지 않는다" → 서버가 강제한다
+ *       (작성자가 직접 published 로 만들거나 남의 공고를 가로채는 것을 차단).
+ */
+export const jobInputSchema = z.object({
+  title: z.string().trim().min(1, "제목을 입력해주세요.").max(200),
+  organization: z.string().trim().min(1, "회사/기관명을 입력해주세요.").max(200),
+  job_type: jobTypeSchema,
+  location: nullableText,
+  deadline: eventDateSchema.optional().nullable(),
+  compensation: nullableText,
+  description: z.string().trim().min(1, "상세 내용을 입력해주세요.").max(5000),
+  requirements: z
+    .string()
+    .trim()
+    .max(3000)
+    .optional()
+    .nullable()
+    .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null)),
+  apply_url: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null))
+    .refine(
+      (v) => {
+        if (v === null || v === undefined) return true;
+        try {
+          return new URL(v).protocol === "https:";
+        } catch {
+          return false;
+        }
+      },
+      { message: "지원 링크는 https 주소만 등록할 수 있어요." },
+    ),
+  contact: nullableText,
+  tag_ids: z.array(z.string().uuid()).max(10).optional(),
+});
+
+export type JobInput = z.infer<typeof jobInputSchema>;
+
+// ── Phase 3 — 콘텐츠(articles) ─────────────────────────────────────────────────
+
+/** 콘텐츠 상태머신(draft→published→hidden). */
+export const articleStatusSchema = z.enum(["draft", "published", "hidden"]);
+
+/**
+ * 콘텐츠 생성/수정 입력(운영자 작성).
+ * 보안: author_id/status 는 스키마에 없음 → 서버가 설정/전환을 강제한다.
+ * tags 는 articles.tags(text[]) 컬럼에 저장하는 자유 문자열 배열(태그 마스터와 무관).
+ */
+export const articleInputSchema = z.object({
+  title: z.string().trim().min(1, "제목을 입력해주세요.").max(200),
+  summary: z.string().trim().min(1, "요약을 입력해주세요.").max(500),
+  body: z.string().trim().min(1, "본문을 입력해주세요.").max(20000),
+  cover_path: z
+    .string()
+    .trim()
+    .max(500)
+    .optional()
+    .nullable()
+    .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null)),
+  related_profile_id: z
+    .string()
+    .uuid()
+    .optional()
+    .nullable()
+    .transform((v) => (v === undefined ? undefined : v ?? null)),
+  tags: z.array(z.string().trim().min(1).max(40)).max(10).optional(),
+});
+
+export type ArticleInput = z.infer<typeof articleInputSchema>;

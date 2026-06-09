@@ -32,9 +32,11 @@ export default async function AdminLayout({
         <Link href="/admin" className="font-bold">
           관리자
         </Link>
-        <nav className="flex gap-4 text-sm text-muted-foreground">
+        <nav className="flex flex-wrap gap-4 text-sm text-muted-foreground">
           <Link href="/admin/reports">신고</Link>
           <Link href="/admin/members">회원</Link>
+          <Link href="/admin/jobs">구인</Link>
+          <Link href="/admin/content">콘텐츠</Link>
           <Link href="/admin/albums">갤러리</Link>
           <Link href="/home">앱으로</Link>
         </nav>

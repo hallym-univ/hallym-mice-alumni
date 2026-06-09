@@ -11,6 +11,12 @@ export const EMPTY = {
   filterZero: { title: "조건에 맞는 동문이 없어요", cta: "필터를 초기화해보세요" },
   adminNoTasks: { title: "처리할 항목이 없어요", cta: "오늘은 깨끗합니다" },
   galleryNoAlbums: { title: "아직 행사 앨범이 없어요", cta: "곧 운영진이 채울 예정이에요" },
+  jobsNoData: { title: "아직 등록된 공고가 없어요", cta: "첫 공고를 올려보세요" },
+  jobsSearchZero: { title: "검색 결과가 없어요", cta: "다른 키워드로 검색해보세요" },
+  jobsFilterZero: { title: "조건에 맞는 공고가 없어요", cta: "필터를 초기화해보세요" },
+  bookmarksEmpty: { title: "저장한 공고가 없어요", cta: "관심 공고를 북마크해보세요" },
+  contentNoData: { title: "아직 콘텐츠가 없어요", cta: "곧 운영진이 채울 예정이에요" },
+  notificationsEmpty: { title: "새 알림이 없어요", cta: "활동이 생기면 여기에 표시돼요" },
 } as const;
 
 /** 에러 상태. */
