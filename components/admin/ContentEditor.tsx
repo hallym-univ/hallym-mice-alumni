@@ -29,11 +29,12 @@ interface RelatedLite {
  * 본문/요약/태그/커버/관련 동문 수정 + 게시 상태 전이 + 삭제.
  * 데이터 접근은 /api/admin/content/:id (서버, requireAdmin)로만.
  */
-export function ContentEditor({ articleId }: { articleId: string }) {
+export function ContentEditor({ articleId }: { articleId?: string }) {
   const router = useRouter();
+  const isCreate = !articleId;
   const { upload, uploading } = useImageUpload();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(articleId));
   const [loadError, setLoadError] = useState(false);
 
   const [title, setTitle] = useState("");
@@ -73,8 +74,8 @@ export function ContentEditor({ articleId }: { articleId: string }) {
   }, [articleId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (articleId) void load();
+  }, [articleId, load]);
 
   function parsedTags(): string[] {
     return tagsInput
@@ -87,18 +88,35 @@ export function ContentEditor({ articleId }: { articleId: string }) {
   async function save() {
     setSaving(true);
     setMsg(null);
+    const payload = {
+      title,
+      summary,
+      body,
+      tags: parsedTags(),
+      cover_path: coverPath,
+      related_profile_id: related?.id ?? null,
+    };
     try {
+      if (isCreate) {
+        // 생성: POST → 새 글 편집 화면으로 이동(거기서 게시).
+        const res = await fetch("/api/admin/content", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setMsg({ ok: false, text: json.error ?? "생성에 실패했어요." });
+          return;
+        }
+        router.push(`/admin/content/${json.id}`);
+        router.refresh();
+        return;
+      }
       const res = await fetch(`/api/admin/content/${articleId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          title,
-          summary,
-          body,
-          tags: parsedTags(),
-          cover_path: coverPath,
-          related_profile_id: related?.id ?? null,
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -192,7 +210,13 @@ export function ContentEditor({ articleId }: { articleId: string }) {
             onClick={() => void save()}
             disabled={saving || !title.trim() || !summary.trim() || !body.trim()}
           >
-            {saving ? "저장 중..." : "내용 저장"}
+            {saving
+              ? isCreate
+                ? "만드는 중…"
+                : "저장 중…"
+              : isCreate
+                ? "콘텐츠 만들기"
+                : "내용 저장"}
           </Button>
         </CardContent>
       </Card>
@@ -243,7 +267,7 @@ export function ContentEditor({ articleId }: { articleId: string }) {
             ) : null}
           </div>
           <p className="text-xs text-muted-foreground">
-            변경 후 위 &quot;내용 저장&quot;을 눌러야 반영돼요.
+            변경 후 위 저장 버튼을 눌러야 반영돼요.
           </p>
         </CardContent>
       </Card>
@@ -255,7 +279,9 @@ export function ContentEditor({ articleId }: { articleId: string }) {
         onClear={() => setRelated(null)}
       />
 
-      {/* 게시 상태 */}
+      {/* 게시 상태 + 삭제 — 생성 후(편집 모드)에만 노출 */}
+      {articleId ? (
+        <>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">게시 상태</CardTitle>
@@ -305,6 +331,14 @@ export function ContentEditor({ articleId }: { articleId: string }) {
         articleId={articleId}
         onDeleted={() => router.push("/admin/content")}
       />
+        </>
+      ) : null}
+
+      {isCreate ? (
+        <p className="text-center text-xs text-muted-foreground">
+          만들면 임시저장 상태로 생성돼요. 이어지는 편집 화면에서 게시할 수 있어요.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -396,7 +430,7 @@ function RelatedSection({
           </div>
         )}
         <p className="text-xs text-muted-foreground">
-          연결 후 위 &quot;내용 저장&quot;을 눌러야 반영돼요.
+          연결 후 위 저장 버튼을 눌러야 반영돼요.
         </p>
       </CardContent>
     </Card>
