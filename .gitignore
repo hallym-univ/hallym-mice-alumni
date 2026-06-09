@@ -32,6 +32,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase CLI 로컬 스크래치(프로젝트 ref·pooler 호스트 등 로컬 전용)
+supabase/.temp/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
