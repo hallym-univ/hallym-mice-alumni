@@ -1,0 +1,331 @@
+import { z } from "zod";
+
+/**
+ * 공용 검증 스키마 (zod).
+ * 외부 URL은 https만 허용하고, 오픈카톡은 open.kakao.com 화이트리스트,
+ * 영상은 YouTube videoId만 추출/저장한다(§3.1, §6.5).
+ */
+
+/** https + open.kakao.com 호스트만 허용하는 오픈카톡 URL. */
+export const openKakaoUrlSchema = z
+  .string()
+  .trim()
+  .url("올바른 URL 형식이 아니에요.")
+  .refine((value) => {
+    try {
+      const u = new URL(value);
+      return u.protocol === "https:" && u.hostname === "open.kakao.com";
+    } catch {
+      return false;
+    }
+  }, "오픈카톡 링크(https://open.kakao.com/...)만 등록할 수 있어요.");
+
+/** 일반 외부 링크(https 강제). 공고 지원 URL 등에 사용. */
+export const httpsUrlSchema = z
+  .string()
+  .trim()
+  .url("올바른 URL 형식이 아니에요.")
+  .refine((value) => {
+    try {
+      return new URL(value).protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, "https 링크만 허용돼요.");
+
+/**
+ * YouTube URL → videoId 추출. 유효하지 않으면 null.
+ * 지원: youtube.com/watch?v=, youtu.be/, youtube.com/embed/, youtube.com/shorts/
+ */
+export function extractYoutubeVideoId(input: string): string | null {
+  const value = input.trim();
+  if (!value) return null;
+
+  // 이미 11자리 videoId 만 들어온 경우
+  if (/^[a-zA-Z0-9_-]{11}$/.test(value)) {
+    return value;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+
+  const host = url.hostname.replace(/^www\./, "");
+  let id: string | null = null;
+
+  if (host === "youtu.be") {
+    id = url.pathname.split("/").filter(Boolean)[0] ?? null;
+  } else if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com") {
+    if (url.pathname === "/watch") {
+      id = url.searchParams.get("v");
+    } else if (url.pathname.startsWith("/embed/")) {
+      id = url.pathname.split("/")[2] ?? null;
+    } else if (url.pathname.startsWith("/shorts/")) {
+      id = url.pathname.split("/")[2] ?? null;
+    }
+  }
+
+  if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
+    return id;
+  }
+  return null;
+}
+
+/** YouTube URL/ID 검증 스키마(videoId 로 변환). 빈 값 허용. */
+export const youtubeSchema = z
+  .string()
+  .trim()
+  .transform((value, ctx) => {
+    if (!value) return null;
+    const id = extractYoutubeVideoId(value);
+    if (!id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "유효한 YouTube 링크가 아니에요.",
+      });
+      return z.NEVER;
+    }
+    return id;
+  });
+
+/** 커피챗 상태(연락 가능 신호). */
+export const coffeechatStatusSchema = z.enum([
+  "open",
+  "monthly",
+  "offer_only",
+  "busy",
+  "private",
+]);
+
+/** 졸업/입학 연도(현실적 범위). */
+export const yearSchema = z
+  .number()
+  .int()
+  .min(1980)
+  .max(new Date().getFullYear() + 6);
+
+// ── 관리자 / 갤러리(Phase 1.5) ────────────────────────────────────────────────
+
+/** 신고 상태머신(open → reviewing → resolved/dismissed). */
+export const reportStatusSchema = z.enum([
+  "open",
+  "reviewing",
+  "resolved",
+  "dismissed",
+]);
+
+/** 회원 상태(정지/해제). */
+export const profileStatusSchema = z.enum(["active", "suspended", "withdrawn"]);
+
+/** 회원 역할. */
+export const profileRoleSchema = z.enum([
+  "student",
+  "alumni",
+  "faculty",
+  "partner",
+  "admin",
+]);
+
+/** YYYY-MM-DD 형식 날짜(행사일). 빈 값 → null. */
+export const eventDateSchema = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), "YYYY-MM-DD 형식이어야 해요.")
+  .transform((v) => (v === "" ? null : v));
+
+/**
+ * 업로드 허용 이미지 MIME 타입(presigned PUT 발급 시 화이트리스트).
+ * R2 비용/악성 콘텐츠 방어를 위해 이미지로만 제한한다.
+ */
+export const uploadContentTypeSchema = z.enum([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+/** 앨범 생성/수정 입력. youtube 는 videoId 로 변환되거나 null. */
+export const albumInputSchema = z.object({
+  title: z.string().trim().min(1, "제목을 입력해주세요.").max(200),
+  event_date: eventDateSchema.optional().nullable(),
+  description: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
+  cover_image_key: z
+    .string()
+    .trim()
+    .max(500)
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
+  youtube_video_id: youtubeSchema.optional().nullable(),
+  consent_confirmed: z.boolean().optional(),
+  is_public: z.boolean().optional(),
+});
+
+/** 앨범 이미지 추가 입력. */
+export const albumImageInputSchema = z.object({
+  image_key: z.string().trim().min(1, "이미지 키가 필요해요.").max(500),
+  caption: z
+    .string()
+    .trim()
+    .max(300)
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
+  sort_order: z.number().int().min(0).optional(),
+});
+
+// ── 사용자 버티컬(B1): 가입/프로필/연락 ───────────────────────────────────────
+
+/** 사용자 가입 시 선택 가능한 역할(admin/partner 제외 — 자기 권한 상승 차단). */
+export const userRoleSchema = z.enum(["student", "alumni", "faculty"]);
+
+/** 고용 상태(재학/구직 허용). */
+export const employmentStatusSchema = z.enum(["employed", "student", "seeking"]);
+
+/**
+ * 빈 문자열은 null, 미전송(undefined)은 그대로 undefined 로 둔다.
+ * (PATCH 부분 업데이트에서 "안 보낸 필드"가 null 로 덮어써지는 것을 방지.)
+ */
+const nullableText = z
+  .string()
+  .trim()
+  .optional()
+  .nullable()
+  .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null));
+
+/** 오픈카톡 URL(빈 값 → null, 미전송 → undefined, 값이 있으면 open.kakao.com https 강제). */
+const optionalOpenKakao = z
+  .string()
+  .trim()
+  .optional()
+  .nullable()
+  .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null))
+  .refine(
+    (v) => {
+      if (v === null || v === undefined) return true;
+      try {
+        const u = new URL(v);
+        return u.protocol === "https:" && u.hostname === "open.kakao.com";
+      } catch {
+        return false;
+      }
+    },
+    { message: "오픈카톡 링크(https://open.kakao.com/...)만 등록할 수 있어요." },
+  );
+
+/**
+ * 온보딩(가입 1단계) 입력 스키마 (§6.1c / §6.2 1단계 + 동의 3체크).
+ * 필수: 이름·역할·학과·(졸업연도 또는 학번) + 동의 3개 true.
+ */
+export const onboardingSchema = z
+  .object({
+    name: z.string().trim().min(1, "이름을 입력해주세요.").max(40),
+    role: userRoleSchema,
+    department: z.string().trim().min(1, "학과/전공을 입력해주세요.").max(60),
+    graduation_year: z
+      .number()
+      .int()
+      .min(1980)
+      .max(new Date().getFullYear() + 6)
+      .nullable()
+      .optional(),
+    student_number: nullableText,
+    consent_terms: z.literal(true, {
+      errorMap: () => ({ message: "이용약관에 동의해야 가입할 수 있어요." }),
+    }),
+    consent_privacy: z.literal(true, {
+      errorMap: () => ({ message: "개인정보 수집·이용에 동의해야 가입할 수 있어요." }),
+    }),
+    consent_profile_public: z.literal(true, {
+      errorMap: () => ({ message: "프로필 공개에 동의해야 가입할 수 있어요." }),
+    }),
+  })
+  .refine(
+    (d) => d.graduation_year != null || (d.student_number && d.student_number.length > 0),
+    {
+      message: "졸업연도 또는 학번 중 하나는 입력해주세요.",
+      path: ["graduation_year"],
+    },
+  );
+
+export type OnboardingInput = z.infer<typeof onboardingSchema>;
+
+/** field_visibility 토글 가능한 키(키 없음 = 공개, false = 비공개). */
+export const fieldVisibilitySchema = z
+  .object({
+    admission_year: z.boolean().optional(),
+    graduation_year: z.boolean().optional(),
+    department: z.boolean().optional(),
+    photo_path: z.boolean().optional(),
+    organization: z.boolean().optional(),
+    position: z.boolean().optional(),
+    bio: z.boolean().optional(),
+    career_summary: z.boolean().optional(),
+    open_kakao_url: z.boolean().optional(),
+  })
+  .strict();
+
+/**
+ * 내 프로필 수정(2단계 완성 포함) 입력 스키마.
+ * 보안: role/status/is_admin/is_verified/user_id 등 권한 필드는 스키마에 "존재하지 않는다"
+ *       → 클라이언트가 보내도 파싱 단계에서 버려진다(자기 권한 상승 차단, §6.2 완료 기준).
+ */
+export const profileUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(40).optional(),
+  department: nullableText,
+  admission_year: z.number().int().min(1980).max(new Date().getFullYear() + 6).nullable().optional(),
+  graduation_year: z.number().int().min(1980).max(new Date().getFullYear() + 6).nullable().optional(),
+  organization: nullableText,
+  employment_status: employmentStatusSchema.nullable().optional(),
+  position: nullableText,
+  bio: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .nullable()
+    .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null)),
+  career_summary: z
+    .string()
+    .trim()
+    .max(1000)
+    .optional()
+    .nullable()
+    .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null)),
+  coffeechat_status: coffeechatStatusSchema.optional(),
+  open_kakao_url: optionalOpenKakao,
+  proposal_email_allowed: z.boolean().optional(),
+  photo_path: nullableText,
+  is_public: z.boolean().optional(),
+  field_visibility: fieldVisibilitySchema.optional(),
+  tag_ids: z.array(z.string().uuid()).max(20).optional(),
+});
+
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
+/** 제안 이메일 중계 입력. */
+export const proposalSchema = z.object({
+  target_profile_id: z.string().uuid(),
+  message: z.string().trim().min(10, "10자 이상 입력해주세요.").max(1000),
+});
+
+/** 신고 접수 입력(사용자측 — profile 대상 위주). */
+export const reportSchema = z.object({
+  target_type: z.enum(["profile", "job", "article"]),
+  target_id: z.string().uuid(),
+  reason: z.string().trim().max(500).optional().transform((v) => (v && v.length > 0 ? v : null)),
+});
+
+/** 차단 입력. */
+export const blockSchema = z.object({
+  target_profile_id: z.string().uuid(),
+});
