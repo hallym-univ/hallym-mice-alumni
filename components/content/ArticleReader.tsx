@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 import { Avatar } from "@/components/profile/Avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -37,8 +40,8 @@ export function ArticleReader({ article }: { article: ArticleDetail }) {
         {article.summary}
       </p>
 
-      <div className="mt-6 whitespace-pre-wrap text-[15px] leading-relaxed">
-        {article.body}
+      <div className="prose prose-neutral mt-6 max-w-none prose-headings:tracking-tight prose-a:text-primary prose-img:rounded-lg">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.body}</ReactMarkdown>
       </div>
 
       {article.tags.length > 0 ? (

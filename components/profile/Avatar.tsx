@@ -27,6 +27,8 @@ export function Avatar({
         alt={`${name} 프로필 사진`}
         width={size}
         height={size}
+        loading="lazy"
+        decoding="async"
         className={cn("rounded-full object-cover", className)}
         style={{ width: size, height: size }}
       />

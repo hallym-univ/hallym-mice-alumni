@@ -19,6 +19,8 @@ export function ArticleCard({ article }: { article: ArticleListItem }) {
           <img
             src={article.cover_url}
             alt=""
+            loading="lazy"
+            decoding="async"
             className="aspect-[16/9] w-full object-cover"
           />
         ) : (

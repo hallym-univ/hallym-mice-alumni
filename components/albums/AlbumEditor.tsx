@@ -20,7 +20,7 @@ import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingSkeleton } from "@/components/common/LoadingSkeleton";
 import { useImageUpload } from "@/components/admin/useImageUpload";
 import { extractYoutubeVideoId } from "@/lib/validators";
-import { r2PublicUrl } from "@/lib/utils";
+import { cn, r2PublicUrl } from "@/lib/utils";
 import type { AlbumImageRow, AlbumRow } from "@/types/database";
 
 /**
@@ -313,31 +313,39 @@ function ImagesSection({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
 
   async function onPickFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     setError(null);
     setBusy(true);
+    setProgress({ done: 0, total: files.length });
     try {
       const added: AlbumImageRow[] = [];
       for (const file of Array.from(files)) {
         const key = await upload(file, "album");
-        if (!key) continue;
-        const res = await fetch(`/api/admin/albums/${albumId}/images`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ image_key: key }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (res.ok && json.image) {
-          added.push(json.image);
-        } else {
-          setError(json.error ?? "이미지 등록에 실패했어요.");
+        if (key) {
+          const res = await fetch(`/api/admin/albums/${albumId}/images`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ image_key: key }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (res.ok && json.image) {
+            added.push(json.image);
+          } else {
+            setError(json.error ?? "이미지 등록에 실패했어요.");
+          }
         }
+        setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
       }
       if (added.length > 0) onImagesChanged([...images, ...added]);
     } finally {
       setBusy(false);
+      setProgress(null);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
@@ -421,8 +429,23 @@ function ImagesSection({
           </div>
         </div>
 
-        {/* 업로드 버튼 */}
-        <div>
+        {/* 업로드 — 드래그&드롭 + 다중 진행률 */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (!busy) setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            if (!busy) void onPickFiles(e.dataTransfer.files);
+          }}
+          className={cn(
+            "rounded-md border border-dashed p-5 text-center transition-colors",
+            dragOver ? "border-primary bg-primary/5" : "border-input",
+          )}
+        >
           <input
             ref={fileRef}
             type="file"
@@ -432,15 +455,24 @@ function ImagesSection({
             disabled={uploading || busy}
             onChange={(e) => void onPickFiles(e.target.files)}
           />
+          <p className="text-sm text-muted-foreground">
+            {progress
+              ? `업로드 중… ${progress.done}/${progress.total}`
+              : "이미지를 여기로 끌어다 놓거나"}
+          </p>
           <Button
             type="button"
             variant="outline"
             size="sm"
+            className="mt-2"
             disabled={uploading || busy}
             onClick={() => fileRef.current?.click()}
           >
-            {uploading || busy ? "업로드 중..." : "+ 이미지 추가"}
+            파일 선택
           </Button>
+          <p className="mt-2 text-xs text-muted-foreground">
+            업로드 시 자동으로 압축돼요(WebP, 최대 1920px).
+          </p>
         </div>
 
         {(error || uploadError) ? (

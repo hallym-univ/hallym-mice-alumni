@@ -17,15 +17,15 @@ export function AlbumGrid({ albums }: { albums: AlbumRow[] }) {
       {albums.map((a) => (
         <li key={a.id}>
           <Link href={`/albums/${a.id}`}>
-            <Card className="overflow-hidden transition-colors hover:bg-accent">
-              <div className="relative aspect-[4/3] w-full bg-muted">
+            <Card className="group overflow-hidden transition-colors hover:bg-accent">
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
                 {a.cover_image_key ? (
                   <Image
                     src={r2PublicUrl(a.cover_image_key)}
                     alt={a.title}
                     fill
                     sizes="(max-width: 480px) 50vw, 240px"
-                    className="object-cover"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 ) : (
                   <GradientCover

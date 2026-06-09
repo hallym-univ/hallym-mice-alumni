@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import Image from "next/image";
 
@@ -48,6 +48,18 @@ export function AlbumViewer({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [active, prev, next]);
+
+  // 모바일 스와이프(좌/우 → 다음/이전).
+  const touchX = useRef<number | null>(null);
+  function onTouchStart(e: React.TouchEvent) {
+    touchX.current = e.touches[0]?.clientX ?? null;
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchX.current === null) return;
+    const dx = (e.changedTouches[0]?.clientX ?? 0) - touchX.current;
+    if (Math.abs(dx) > 40) (dx < 0 ? next : prev)();
+    touchX.current = null;
+  }
 
   const current = active !== null ? images[active] : null;
 
@@ -108,7 +120,11 @@ export function AlbumViewer({
           <DialogTitle className="sr-only">사진 보기</DialogTitle>
           {current ? (
             <div className="space-y-2">
-              <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
+              <div
+                className="relative aspect-square w-full overflow-hidden rounded-md bg-muted"
+                onTouchStart={onTouchStart}
+                onTouchEnd={onTouchEnd}
+              >
                 <Image
                   src={r2PublicUrl(current.image_key)}
                   alt={current.caption ?? "행사 사진"}
