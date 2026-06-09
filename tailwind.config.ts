@@ -111,6 +111,14 @@ const config: Config = {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(-50%)" },
         },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-14px)" },
+        },
+        "spin-slow": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -119,6 +127,8 @@ const config: Config = {
         "fade-in": "fade-in 0.7s ease-out both",
         "gradient-drift": "gradient-drift 16s ease-in-out infinite",
         marquee: "marquee 32s linear infinite",
+        float: "float 6s ease-in-out infinite",
+        "spin-slow": "spin-slow 28s linear infinite",
       },
     },
   },

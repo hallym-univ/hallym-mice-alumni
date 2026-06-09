@@ -1,24 +1,63 @@
 import { Hero } from "@/components/landing/Hero";
-import { ValueProps } from "@/components/landing/ValueProps";
-import { HowItWorks } from "@/components/landing/HowItWorks";
+import { Marquee } from "@/components/landing/Marquee";
 import { StatsTeaser } from "@/components/landing/StatsTeaser";
-import { GalleryTeaser } from "@/components/landing/GalleryTeaser";
+import { DirectoryPreview } from "@/components/landing/DirectoryPreview";
+import { FeatureSections } from "@/components/landing/FeatureSections";
 import { LandingCTA } from "@/components/landing/LandingCTA";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
- * 랜딩 (§11.1) — 데스크톱 풀 에디토리얼.
- * 정적 Server Component(데이터 없음). 앱의 모바일 우선 480px 규칙을 깨는 유일한 화면.
- * 섹션 컴포넌트를 조합만 한다(각 섹션이 자체 reveal/레이아웃 책임).
+ * 랜딩 (§11.1) — 블랙 캔버스 에디토리얼 쇼케이스.
+ * 자체 다크 테마(앱 라이트 토큰과 분리). 실시간 카운트는 서버에서 집계(PII 없음, 수치만).
  */
-export default function LandingPage() {
+async function getCounts() {
+  try {
+    const admin = createAdminClient();
+    const [a, j, ar] = await Promise.all([
+      admin
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active")
+        .eq("is_public", true),
+      admin
+        .from("jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "published"),
+      admin
+        .from("articles")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "published"),
+    ]);
+    return { alumni: a.count ?? 0, jobs: j.count ?? 0, articles: ar.count ?? 0 };
+  } catch {
+    return { alumni: 0, jobs: 0, articles: 0 };
+  }
+}
+
+const MARQUEE = [
+  "동문 찾기",
+  "커피챗",
+  "오픈카톡",
+  "구인구직",
+  "동문 인터뷰",
+  "네트워킹",
+  "기수",
+  "분야 태그",
+];
+
+export default async function LandingPage() {
+  const counts = await getCounts();
+
   return (
-    <main className="min-h-dvh">
+    <main className="bg-black text-white">
       <Hero />
-      <ValueProps />
-      <HowItWorks />
-      <StatsTeaser />
-      <GalleryTeaser />
+      <div className="border-y border-white/10 bg-black py-6">
+        <Marquee items={MARQUEE} />
+      </div>
+      <StatsTeaser counts={counts} />
+      <DirectoryPreview />
+      <FeatureSections />
       <LandingCTA />
       <LandingFooter />
     </main>
