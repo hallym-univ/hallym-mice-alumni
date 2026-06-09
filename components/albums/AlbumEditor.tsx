@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-import { Trash2 } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -385,6 +385,44 @@ function ImagesSection({
     }
   }
 
+  // ── 드래그 재정렬 ──────────────────────────────────────────────────────────
+  const dragFrom = useRef<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+
+  async function persistOrder(next: AlbumImageRow[], prev: AlbumImageRow[]) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/albums/${albumId}/images`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ order: next.map((i) => i.id) }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setError(json.error ?? "순서 변경에 실패했어요.");
+        onImagesChanged(prev); // 실패 시 원래 순서로 되돌린다.
+      }
+    } catch {
+      setError("네트워크 오류가 발생했어요.");
+      onImagesChanged(prev);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function dropTo(to: number) {
+    const from = dragFrom.current;
+    dragFrom.current = null;
+    if (from === null || from === to || busy) return;
+    const prev = images;
+    const next = [...images];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onImagesChanged(next); // 낙관적 업데이트 후 서버 반영
+    void persistOrder(next, prev);
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -481,37 +519,81 @@ function ImagesSection({
           </p>
         ) : null}
 
-        {/* 그리드 */}
+        {/* 그리드 — 끌어서 순서 변경 */}
         {images.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             아직 이미지가 없어요.
           </p>
         ) : (
-          <ul className="grid grid-cols-3 gap-2">
-            {images.map((img) => (
-              <li
-                key={img.id}
-                className="relative aspect-square overflow-hidden rounded-md border"
-              >
-                <Image
-                  src={r2PublicUrl(img.image_key)}
-                  alt={img.caption ?? "앨범 이미지"}
-                  fill
-                  sizes="(max-width: 720px) 33vw, 240px"
-                  className="object-cover"
-                />
-                <button
-                  type="button"
-                  aria-label="이미지 삭제"
-                  disabled={busy}
-                  onClick={() => void removeImage(img.id)}
-                  className="absolute right-1 top-1 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 disabled:opacity-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            {images.length > 1 ? (
+              <p className="text-xs text-muted-foreground">
+                이미지를 끌어다 놓아 순서를 바꿀 수 있어요. 번호 순서대로 갤러리에
+                표시됩니다.
+              </p>
+            ) : null}
+            <ul className="grid grid-cols-3 gap-2">
+              {images.map((img, idx) => {
+                const draggable = !busy && images.length > 1;
+                return (
+                  <li
+                    key={img.id}
+                    draggable={draggable}
+                    onDragStart={() => {
+                      dragFrom.current = idx;
+                    }}
+                    onDragOver={(e) => {
+                      if (dragFrom.current === null) return;
+                      e.preventDefault();
+                      setOverIdx(idx);
+                    }}
+                    onDragLeave={() => setOverIdx((o) => (o === idx ? null : o))}
+                    onDrop={() => {
+                      setOverIdx(null);
+                      dropTo(idx);
+                    }}
+                    onDragEnd={() => {
+                      dragFrom.current = null;
+                      setOverIdx(null);
+                    }}
+                    className={cn(
+                      "group relative aspect-square overflow-hidden rounded-md border transition-shadow",
+                      draggable && "cursor-move",
+                      overIdx === idx && "ring-2 ring-primary",
+                    )}
+                  >
+                    <Image
+                      src={r2PublicUrl(img.image_key)}
+                      alt={img.caption ?? "앨범 이미지"}
+                      fill
+                      draggable={false}
+                      sizes="(max-width: 720px) 33vw, 240px"
+                      className="object-cover"
+                    />
+                    {/* 순서 번호 */}
+                    <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium leading-none text-white">
+                      {idx + 1}
+                    </span>
+                    {/* 드래그 핸들(어포던스) */}
+                    {draggable ? (
+                      <span className="pointer-events-none absolute left-1 top-1 rounded bg-black/50 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        <GripVertical className="h-3.5 w-3.5" />
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-label="이미지 삭제"
+                      disabled={busy}
+                      onClick={() => void removeImage(img.id)}
+                      className="absolute right-1 top-1 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </CardContent>
     </Card>

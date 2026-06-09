@@ -183,6 +183,14 @@ export const albumImageInputSchema = z.object({
   sort_order: z.number().int().min(0).optional(),
 });
 
+/** 앨범 이미지 순서 변경(드래그 재정렬) — imageId 를 원하는 순서대로 나열. */
+export const albumImagesReorderSchema = z.object({
+  order: z
+    .array(z.string().uuid("이미지 식별자가 올바르지 않아요."))
+    .min(1, "정렬할 이미지가 없어요.")
+    .max(500),
+});
+
 // ── 사용자 버티컬(B1): 가입/프로필/연락 ───────────────────────────────────────
 
 /** 사용자 가입 시 선택 가능한 역할(admin/partner 제외 — 자기 권한 상승 차단). */
