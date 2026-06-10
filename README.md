@@ -99,6 +99,8 @@ npm run build                # 프로덕션 빌드
 - **GitHub**: `hallym-univ/hallym-mice-alumni` (private)
 - **Vercel**: `hallym-s-projects/hallym-mice-alumni` → **https://hallym-mice-alumni-chi.vercel.app**
 - 환경변수 11개는 Vercel Production에 등록됨. `NEXT_PUBLIC_SITE_URL` = 프로덕션 도메인.
+- **함수 리전 = 서울(icn1)** — `vercel.json`의 `regions`로 고정. Supabase가 서울(ap-northeast-2)이라
+  함수가 기본값(미국 iad1)으로 돌면 **모든 DB 쿼리가 태평양을 왕복**해 페이지가 수 초씩 느려진다. 바꾸지 말 것.
 
 ### 재배포 / 업데이트
 ```bash
