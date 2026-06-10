@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MarkdownEditor } from "@/components/admin/MarkdownEditor";
+import { RichEditor } from "@/components/admin/RichEditor";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingSkeleton } from "@/components/common/LoadingSkeleton";
 import { useImageUpload } from "@/components/admin/useImageUpload";
@@ -187,7 +187,7 @@ export function ContentEditor({ articleId }: { articleId?: string }) {
           </div>
           <div className="space-y-1">
             <Label>본문 *</Label>
-            <MarkdownEditor value={body} onChange={setBody} />
+            <RichEditor value={body} onChange={setBody} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="c-tags">태그 (쉼표로 구분, 최대 10개)</Label>

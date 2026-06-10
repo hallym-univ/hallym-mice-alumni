@@ -11,8 +11,8 @@ import { formatDate } from "@/lib/labels";
 import type { ArticleDetail } from "@/lib/content/types";
 
 /**
- * 콘텐츠 본문 리더 (§6.6). 커버·제목·요약·본문(plain text)·태그·관련 동문.
- * 본문은 whitespace-pre-wrap 으로 줄바꿈 보존(리치에디터 의존성 없음).
+ * 콘텐츠 본문 리더 (§6.6). 커버·제목·요약·본문(markdown)·태그·관련 동문.
+ * 본문은 react-markdown + remark-gfm 으로 렌더(작성은 RichEditor/WYSIWYG, 저장 포맷은 마크다운).
  */
 export function ArticleReader({ article }: { article: ArticleDetail }) {
   return (

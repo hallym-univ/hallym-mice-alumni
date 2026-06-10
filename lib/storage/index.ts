@@ -77,6 +77,25 @@ export function getPublicUrl(key: string): string {
   return `${base}/${cleanKey}`;
 }
 
+/**
+ * 서버에서 직접 객체 업로드(원격 이미지 재호스팅 등 presigned 가 아닌 경로).
+ * 바이트는 서버가 이미 손에 들고 있어야 한다(외부 fetch 결과 등). 호출부에서 크기·타입 검증 필수.
+ */
+export async function uploadObject(
+  key: string,
+  body: Uint8Array,
+  contentType: string,
+): Promise<void> {
+  await getClient().send(
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    }),
+  );
+}
+
 /** 객체 삭제(앨범/프로필 사진 교체·파기 시). */
 export async function deleteObject(key: string): Promise<void> {
   await getClient().send(

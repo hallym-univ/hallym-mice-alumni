@@ -114,3 +114,18 @@
     transform: none !important;
   }
 }
+
+/* TipTap(WYSIWYG 본문 에디터) — 빈 상태 placeholder + 편집 영역 */
+.tiptap:focus {
+  outline: none;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.tiptap img.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--primary));
+}
