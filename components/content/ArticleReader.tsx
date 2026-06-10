@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import ReactMarkdown from "react-markdown";
@@ -18,12 +19,17 @@ export function ArticleReader({ article }: { article: ArticleDetail }) {
   return (
     <article>
       {article.cover_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={article.cover_url}
-          alt=""
-          className="aspect-[16/9] w-full rounded-lg border object-cover"
-        />
+        // 본문 LCP 후보 → priority 로 즉시 로드. next/image 가 리사이즈·포맷 변환.
+        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border">
+          <Image
+            src={article.cover_url}
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 480px) 100vw, 440px"
+            className="object-cover"
+          />
+        </div>
       ) : (
         <GradientCover
           seed={article.id}

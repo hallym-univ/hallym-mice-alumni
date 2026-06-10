@@ -11,6 +11,8 @@ const nextConfig = {
   // R2 공개 이미지 도메인(NEXT_PUBLIC_R2_PUBLIC_BASE_URL)에서 next/image 로드를 허용한다.
   // 빌드 시점에 env가 없을 수 있으므로 안전하게 파싱한다.
   images: {
+    // AVIF 우선(webp 대비 추가 20~30% 절감), 미지원 브라우저는 webp 폴백.
+    formats: ["image/avif", "image/webp"],
     remotePatterns: (() => {
       const base = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL;
       if (!base) return [];

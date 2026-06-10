@@ -13,8 +13,6 @@ import { ERROR } from "@/lib/messages";
  * 회원 갤러리 — 앨범 상세 (§6.5-5 / T-156).
  * 로그인 회원만 열람(서버 가드). 공개 앨범이 아니면 빈/없음 처리.
  */
-export const dynamic = "force-dynamic";
-
 export default async function MemberAlbumDetailPage({
   params,
 }: {

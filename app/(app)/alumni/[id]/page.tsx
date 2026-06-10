@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { after } from "next/server";
 
 import { ArrowLeft, BadgeCheck, CalendarClock } from "lucide-react";
 
@@ -57,18 +58,18 @@ export default async function ProfileDetailPage({
 
   const p = result.profile;
 
-  // 조회수 신호(본인 조회는 제외).
+  // 조회수 신호(본인 조회는 제외) — after()로 응답 전송 후 기록(렌더를 막지 않음).
   if (!p.is_self) {
-    try {
-      await recordEvent({
+    after(() =>
+      recordEvent({
         eventType: "profile_view",
         cohortHash: makeCohortHash(me.userId),
         profileId: me.profile.id,
         targetId: p.id,
-      });
-    } catch {
-      // 무시.
-    }
+      }).catch(() => {
+        // 분석 이벤트 실패는 무시.
+      }),
+    );
   }
 
   const cohort = p.cohort ?? p.graduation_year;

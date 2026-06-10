@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,21 +9,23 @@ import type { ArticleListItem } from "@/lib/content/types";
 
 /**
  * 콘텐츠 카드 (§6.6). 커버·제목·요약·태그·날짜.
- * 커버는 R2 공개 URL 을 일반 img 로 표시(next/image remotePatterns 의존 회피, Avatar 와 동일 방침).
+ * 커버는 next/image 로 표시 — R2 원본(수백 KB)을 뷰포트 크기로 리사이즈·webp/avif 변환해
+ * 전송량을 ~90% 줄인다(remotePatterns 는 next.config 에서 env 로 구성).
  */
 export function ArticleCard({ article }: { article: ArticleListItem }) {
   return (
     <Link href={`/content/${article.id}`} className="block">
       <Card className="overflow-hidden transition-colors hover:bg-accent/40">
         {article.cover_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={article.cover_url}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="aspect-[16/9] w-full object-cover"
-          />
+          <div className="relative aspect-[16/9] w-full">
+            <Image
+              src={article.cover_url}
+              alt=""
+              fill
+              sizes="(max-width: 480px) 100vw, 448px"
+              className="object-cover"
+            />
+          </div>
         ) : (
           <GradientCover
             seed={article.id}

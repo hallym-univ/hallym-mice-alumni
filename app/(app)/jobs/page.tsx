@@ -5,22 +5,24 @@ import { Bookmark, Plus } from "lucide-react";
 import { JobsBoard } from "@/components/jobs/JobsBoard";
 import { Button } from "@/components/ui/button";
 import { requireMemberPage } from "@/lib/guards/page";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { listPublishedJobs } from "@/lib/jobs/queries";
+import { getTagsMaster } from "@/lib/tags/queries";
 import type { TagRow } from "@/types/database";
 
 /**
  * 구인구직 보드 (§6.4 / 하단 탭 "기회").
- * 서버에서 회원 가드 후 태그 마스터를 주입하고, 목록은 클라가 /api/jobs 로 페이징한다.
+ * 첫 페이지 데이터를 서버에서 미리 조회해 주입(마운트 후 API 재호출 폭포 제거).
+ * 필터·검색·무한 스크롤은 기존 /api/jobs 경로 그대로.
  */
 export default async function JobsPage() {
-  await requireMemberPage("/jobs");
+  const me = await requireMemberPage("/jobs");
 
-  const admin = createAdminClient();
-  const { data: tags } = await admin
-    .from("tags")
-    .select("id,name,category")
-    .order("category", { ascending: true })
-    .order("name", { ascending: true });
+  // 서버 조회 실패 시 initialData=undefined → 컴포넌트가 기존 클라이언트
+  // fetch 경로(인라인 ErrorState + 재시도)로 폴백한다(페이지 전체 500 방지).
+  const [tags, initialData] = await Promise.all([
+    getTagsMaster(),
+    listPublishedJobs(me, {}).catch(() => undefined),
+  ]);
 
   return (
     <section>
@@ -51,7 +53,7 @@ export default async function JobsPage() {
           </Button>
         </div>
       </header>
-      <JobsBoard tags={(tags ?? []) as TagRow[]} />
+      <JobsBoard tags={tags as TagRow[]} initialData={initialData} />
     </section>
   );
 }

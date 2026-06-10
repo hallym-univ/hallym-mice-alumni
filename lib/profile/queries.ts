@@ -45,13 +45,29 @@ export async function listDirectory(
   const limit = Math.min(filters.limit ?? DEFAULT_LIMIT, 50);
   const offset = filters.cursor ?? 0;
 
-  // 나를 차단한 사용자의 프로필은 내게 숨긴다(§6.3-4).
-  const blockedMe = await fetchBlockedMeIds(me.profile.id);
+  // 서로 독립인 선행 조회 2개를 병렬로(직렬 폭포 제거):
+  // ① 나를 차단한/내가 차단한 프로필(디렉토리에서 숨김, §6.3-4)
+  // ② 태그 필터 대상 profile_id 집합
+  const [blockedMe, tagProfileIds] = await Promise.all([
+    fetchBlockedMeIds(me.profile.id),
+    filters.tagId
+      ? admin
+          .from("profile_tags")
+          .select("profile_id")
+          .eq("tag_id", filters.tagId)
+          .then(({ data }) => (data ?? []).map((r) => r.profile_id as string))
+      : Promise.resolve(null),
+  ]);
+
+  if (tagProfileIds !== null && tagProfileIds.length === 0) {
+    return { items: [], nextCursor: null, total: 0 };
+  }
 
   let query = admin
     .from("profiles")
     .select(
-      "id,user_id,name,role,status,is_verified,student_number,admission_year,graduation_year,department,organization,employment_status,position,bio,career_summary,coffeechat_status,open_kakao_url,proposal_email_allowed,photo_path,is_public,field_visibility,deleted_at,anonymized_at,created_at,updated_at",
+      // profile_tags→tags 임베드로 태그를 같은 왕복에 가져온다(후행 태그 쿼리 제거).
+      "id,user_id,name,role,status,is_verified,student_number,admission_year,graduation_year,department,organization,employment_status,position,bio,career_summary,coffeechat_status,open_kakao_url,proposal_email_allowed,photo_path,is_public,field_visibility,deleted_at,anonymized_at,created_at,updated_at, profile_tags(tags(id,name,category))",
       { count: "exact" },
     )
     .eq("status", "active")
@@ -61,18 +77,8 @@ export async function listDirectory(
   if (blockedMe.length > 0) {
     query = query.not("id", "in", `(${blockedMe.join(",")})`);
   }
-
-  // 태그 필터: 먼저 profile_tags 에서 대상 profile_id 집합을 구한다.
-  if (filters.tagId) {
-    const { data: tagRows } = await admin
-      .from("profile_tags")
-      .select("profile_id")
-      .eq("tag_id", filters.tagId);
-    const ids = (tagRows ?? []).map((r) => r.profile_id);
-    if (ids.length === 0) {
-      return { items: [], nextCursor: null, total: 0 };
-    }
-    query = query.in("id", ids);
+  if (tagProfileIds !== null) {
+    query = query.in("id", tagProfileIds);
   }
 
   if (filters.q) {
@@ -104,15 +110,22 @@ export async function listDirectory(
     throw new Error(`[directory] 조회 실패: ${error.message}`);
   }
 
-  const rows = (data ?? []) as ProfileRow[];
-  const tagMap = await fetchTagsForProfiles(rows.map((r) => r.id));
+  // 임베드 결과에서 태그를 추출(별도 왕복 없음).
+  type RowWithTags = ProfileRow & {
+    profile_tags: Array<{ tags: TagRow | TagRow[] | null }> | null;
+  };
+  const rows = (data ?? []) as RowWithTags[];
 
-  const items = rows.map((row) =>
-    toProfileCard(row, tagMap.get(row.id) ?? [], {
+  const items = rows.map((row) => {
+    const { profile_tags, ...profile } = row;
+    const tags = (profile_tags ?? [])
+      .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags))
+      .filter((t): t is TagRow => t != null);
+    return toProfileCard(profile as ProfileRow, tags, {
       isSelf: row.id === me.profile.id,
       toPhotoUrl: getPublicUrl,
-    }),
-  );
+    });
+  });
 
   const hasMore = items.length === limit;
   return {
@@ -152,13 +165,14 @@ export async function getProfileDetail(
   if (!isSelf) {
     if (data.status !== "active" || data.deleted_at) return { kind: "not_found" };
     if (!data.is_public) return { kind: "private" };
-
-    // 차단 관계 검사(양방향).
-    const blocked = await isBlockedBetween(me.profile.id, data.id);
-    if (blocked) return { kind: "blocked" };
   }
 
-  const tags = await fetchTagsForProfiles([data.id]);
+  // 차단 검사와 태그 조회는 독립 → 병렬(직렬 2왕복 → 1단계).
+  const [blocked, tags] = await Promise.all([
+    isSelf ? Promise.resolve(false) : isBlockedBetween(me.profile.id, data.id),
+    fetchTagsForProfiles([data.id]),
+  ]);
+  if (blocked) return { kind: "blocked" };
 
   const profile = toProfileDetail(data, tags.get(data.id) ?? [], {
     isSelf,

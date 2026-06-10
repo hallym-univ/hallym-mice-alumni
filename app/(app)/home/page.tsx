@@ -24,30 +24,30 @@ export default async function HomePage() {
   const me = await requireMemberPage("/home");
   const admin = createAdminClient();
 
-  const { count: viewCount } = await admin
-    .from("events")
-    .select("id", { count: "exact", head: true })
-    .eq("event_type", "profile_view")
-    .eq("target_id", me.profile.id);
-
-  let cohortNewCount = 0;
-  if (me.profile.graduation_year) {
-    const { count } = await admin
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "active")
-      .eq("is_public", true)
-      .eq("graduation_year", me.profile.graduation_year)
-      .neq("id", me.profile.id);
-    cohortNewCount = count ?? 0;
-  }
-
-  const [directory, jobsRes, articles, albums] = await Promise.all([
-    listDirectory(me, { limit: 6 }),
-    listPublishedJobs(me, { limit: 3 }),
-    listPublishedArticles(3),
-    listPublicAlbums(4),
-  ]);
+  // 6개 쿼리 전부 독립 → 한 번에 병렬 실행(직렬 폭포 제거: 8왕복 → 1단계).
+  const [viewRes, cohortRes, directory, jobsRes, articles, albums] =
+    await Promise.all([
+      admin
+        .from("events")
+        .select("id", { count: "exact", head: true })
+        .eq("event_type", "profile_view")
+        .eq("target_id", me.profile.id),
+      me.profile.graduation_year
+        ? admin
+            .from("profiles")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "active")
+            .eq("is_public", true)
+            .eq("graduation_year", me.profile.graduation_year)
+            .neq("id", me.profile.id)
+        : Promise.resolve({ count: 0 }),
+      listDirectory(me, { limit: 6 }),
+      listPublishedJobs(me, { limit: 3 }),
+      listPublishedArticles(3),
+      listPublicAlbums(4),
+    ]);
+  const viewCount = viewRes.count;
+  const cohortNewCount = cohortRes.count ?? 0;
 
   const recommended = directory.items
     .filter((p) => p.id !== me.profile.id)

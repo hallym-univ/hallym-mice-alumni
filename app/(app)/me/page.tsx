@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { requireMemberPage } from "@/lib/guards/page";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublicUrl } from "@/lib/storage";
+import { getTagsMaster } from "@/lib/tags/queries";
 import { toMyProfile } from "@/lib/profile/visibility";
 import { ROLE_LABEL } from "@/lib/labels";
 import type { TagRow } from "@/types/database";
@@ -23,8 +24,8 @@ export default async function MePage() {
   const me = await requireMemberPage("/me");
 
   const admin = createAdminClient();
-  const [{ data: tagRows }, { data: myTags }] = await Promise.all([
-    admin.from("tags").select("id,name,category").order("category").order("name"),
+  const [tagRows, { data: myTags }] = await Promise.all([
+    getTagsMaster(),
     admin.from("profile_tags").select("tag_id").eq("profile_id", me.profile.id),
   ]);
 

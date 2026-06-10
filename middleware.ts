@@ -30,8 +30,66 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
+/** base64url → 문자열(Edge 안전, 패딩 보정). */
+function b64urlDecode(s: string): string {
+  const pad = "=".repeat((4 - (s.length % 4)) % 4);
+  return atob(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
+}
+
+/**
+ * sb-*-auth-token 쿠키(.0/.1 조각 포함)에서 access token 의 exp(초)를 네트워크 없이 읽는다.
+ * 어떤 단계든 파싱 실패 시 null(보수적으로 "판단 불가" → 호출부가 통과 처리; 비로그인과 동일 취급,
+ * 보호 데이터는 페이지 가드가 막는다).
+ */
+function getAccessTokenExp(request: NextRequest): number | null {
+  const parts = request.cookies
+    .getAll()
+    .filter((c) => /^sb-.+-auth-token(\.\d+)?$/.test(c.name))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  if (parts.length === 0) return null;
+
+  try {
+    let raw = parts.map((c) => c.value).join("");
+    if (raw.startsWith("base64-")) {
+      raw = b64urlDecode(raw.slice("base64-".length));
+    }
+    const session = JSON.parse(raw) as { access_token?: string };
+    const jwt = session.access_token;
+    if (typeof jwt !== "string") return null;
+    const payload = JSON.parse(b64urlDecode(jwt.split(".")[1] ?? "")) as {
+      exp?: number;
+    };
+    return typeof payload.exp === "number" ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  const { pathname } = request.nextUrl;
+
+  // ① 공개 경로는 Auth 왕복 없이 즉시 통과(세션 리프레시는 보호 경로 진입 시 수행).
+  if (isPublicPath(pathname)) {
+    return response;
+  }
+
+  // ② 링크 프리페치 요청은 "토큰이 아직 유효할 때만" 통과 — 화면당 N회 프리페치 × Auth 왕복 제거.
+  //    만료/임박 토큰으로 통과시키면 RSC 렌더 중 토큰 회전이 일어나는데 쿠키 기록이 유실되어
+  //    (lib/supabase/server.ts 의 setAll 은 RSC 에서 무시됨) refresh token reuse-detection 에
+  //    걸려 강제 로그아웃될 수 있다 → 그 경우엔 폴스루해서 미들웨어가 리프레시(쿠키 기록 가능).
+  //    실제 내비게이션 시 미들웨어가 다시 돌고, 페이지의 withAuth 가 2차로 강제한다.
+  if (
+    request.headers.get("next-router-prefetch") ||
+    request.headers.get("purpose") === "prefetch"
+  ) {
+    const exp = getAccessTokenExp(request);
+    // 토큰 부재(비로그인 — 페이지 가드가 처리) 또는 60초 이상 유효 → 통과.
+    if (exp === null || exp * 1000 - Date.now() > 60_000) {
+      return response;
+    }
+  }
 
   const supabase = createServerClient(
     publicEnv.supabaseUrl,
@@ -60,13 +118,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
-
-  // 공개 경로는 통과.
-  if (isPublicPath(pathname)) {
-    return response;
-  }
 
   // 비로그인 → /login (원래 경로를 next 쿼리로 보존)
   if (!user) {

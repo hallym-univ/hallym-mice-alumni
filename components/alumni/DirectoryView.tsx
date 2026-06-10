@@ -43,17 +43,30 @@ interface ApiResult {
   total: number | null;
 }
 
-export function DirectoryView({ tags }: { tags: TagRow[] }) {
+export function DirectoryView({
+  tags,
+  initialData,
+}: {
+  tags: TagRow[];
+  /** 서버에서 미리 조회한 첫 페이지(기본 필터 기준). 있으면 마운트 fetch 를 생략한다. */
+  initialData?: ApiResult;
+}) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
 
-  const [items, setItems] = useState<PublicProfileCard[]>([]);
-  const [cursor, setCursor] = useState<number | null>(0);
+  const [items, setItems] = useState<PublicProfileCard[]>(
+    initialData?.items ?? [],
+  );
+  const [cursor, setCursor] = useState<number | null>(
+    initialData ? initialData.nextCursor : 0,
+  );
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "loadingMore">(
-    "loading",
+    initialData ? "ready" : "loading",
   );
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // initialData 는 기본 필터(EMPTY_FILTERS) 기준이므로 첫 마운트의 fetch 만 건너뛴다.
+  const skipFirstFetch = useRef(Boolean(initialData));
 
   const hasActiveFilters =
     applied.tag !== "" || applied.year !== "" || applied.coffeechat;
@@ -72,8 +85,12 @@ export function DirectoryView({ tags }: { tags: TagRow[] }) {
     [applied],
   );
 
-  // applied 변경 시 첫 페이지 로드.
+  // applied 변경 시 첫 페이지 로드. (SSR 주입분이 있으면 첫 마운트는 생략.)
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
     let cancelled = false;
     setStatus("loading");
     setItems([]);

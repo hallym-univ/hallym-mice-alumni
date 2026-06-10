@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { after } from "next/server";
 
 import { ArticleReader } from "@/components/content/ArticleReader";
 import { AdminInlineBar } from "@/components/admin/AdminInlineBar";
@@ -43,17 +44,18 @@ export default async function ContentDetailPage({
   }
 
   // 일반 회원의 게시글 열람만 집계한다(관리자 검수 열람·draft/hidden 은 조회수 오염 방지).
+  // after()로 응답 전송 후 기록 — 조회수 INSERT 가 렌더를 막지 않는다.
   if (result.article.status === "published" && !me.isAdmin) {
-    try {
-      await recordEvent({
+    after(() =>
+      recordEvent({
         eventType: "article_view",
         cohortHash: makeCohortHash(me.userId),
         profileId: me.profile.id,
         targetId: id,
-      });
-    } catch {
-      // 무시.
-    }
+      }).catch(() => {
+        // 분석 이벤트 실패는 무시.
+      }),
+    );
   }
 
   return (

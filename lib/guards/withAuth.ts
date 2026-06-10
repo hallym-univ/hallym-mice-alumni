@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
@@ -49,67 +51,76 @@ function jsonError(status: number, message: string): Response {
 }
 
 /**
- * 현재 세션 → profiles → 권한 판정을 수행하고 AuthContext 를 반환한다.
- * 실패 시 AuthError(401/403)를 throw 한다.
+ * 인증 데이터 조회(역할 검사 없음) — React cache() 로 **요청 단위 메모이즈**.
+ * 레이아웃·페이지·generateMetadata 가 같은 요청에서 각자 호출해도 실제 조회는 1회.
+ * (이전엔 레이아웃+페이지가 각각 3왕복 = 6왕복이었음.)
  *
- * Server Action 등 raw 컨텍스트가 필요할 때 직접 호출할 수 있다.
+ * 미로그인 → null. 프로필 미생성 → AuthError(403).
  */
-export async function resolveAuth(role: Role): Promise<AuthContext> {
+const loadAuth = cache(async (): Promise<AuthContext | null> => {
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    throw new AuthError(401, "로그인이 필요합니다.");
-  }
+  if (!user) return null;
 
+  // profiles + admins 멤버십을 한 왕복으로 조회.
+  // admins 는 profiles 를 참조하는 FK 가 2개(profile_id, granted_by)라 관계를 명시한다.
   const admin = createAdminClient();
-  const { data: profile, error } = await admin
+  // profile_id 가 unique(0001_init.sql)라 PostgREST 가 1:1 로 인식 → admins 는 객체 또는 null.
+  // 주의: 이 판정은 그 unique 제약에 의존한다. 아래에서 배열 형태도 런타임 정규화해
+  // 스키마 변화 시 "[] !== null → 전원 admin" 같은 권한 상승이 불가능하게 한다.
+  const { data, error } = await admin
     .from("profiles")
-    .select("*")
+    .select("*, admins!admins_profile_id_fkey(id)")
     .eq("user_id", user.id)
-    .maybeSingle<ProfileRow>();
+    .maybeSingle<
+      ProfileRow & { admins: { id: string } | Array<{ id: string }> | null }
+    >();
 
   if (error) {
     throw new AuthError(403, "프로필 조회에 실패했습니다.");
   }
-  if (!profile) {
+  if (!data) {
     // 로그인은 했으나 프로필 미생성(온보딩 미완료).
     throw new AuthError(403, "프로필이 없습니다. 온보딩을 완료해주세요.");
   }
 
-  const isAdmin = await checkAdmin(profile, user.email ?? null);
+  const { admins, ...profile } = data;
+  const email = user.email ?? null;
+  const env = getServerEnv();
+  // 객체/배열/null 어느 형태든 "행이 실제로 존재할 때만" 관리자로 판정(런타임 정규화).
+  const hasAdminRow = Array.isArray(admins) ? admins.length > 0 : admins != null;
+  const isAdmin =
+    (email !== null && env.adminEmails.includes(email.toLowerCase())) ||
+    hasAdminRow;
+
+  return { userId: user.id, email, profile: profile as ProfileRow, isAdmin };
+});
+
+/**
+ * 현재 세션 → profiles → 권한 판정을 수행하고 AuthContext 를 반환한다.
+ * 실패 시 AuthError(401/403)를 throw 한다.
+ *
+ * Server Action 등 raw 컨텍스트가 필요할 때 직접 호출할 수 있다.
+ * 데이터 조회는 loadAuth(요청 단위 캐시)가 담당하고 여기선 역할 검사만 한다.
+ */
+export async function resolveAuth(role: Role): Promise<AuthContext> {
+  const ctx = await loadAuth();
+  if (!ctx) {
+    throw new AuthError(401, "로그인이 필요합니다.");
+  }
 
   // member / admin 은 active 상태를 요구한다(suspended/withdrawn 차단).
-  if (role !== "any" && profile.status !== "active") {
+  if (role !== "any" && ctx.profile.status !== "active") {
     throw new AuthError(403, "이용이 제한된 계정입니다.");
   }
-  if (role === "admin" && !isAdmin) {
+  if (role === "admin" && !ctx.isAdmin) {
     throw new AuthError(403, "관리자 권한이 필요합니다.");
   }
 
-  return {
-    userId: user.id,
-    email: user.email ?? null,
-    profile,
-    isAdmin,
-  };
-}
-
-/** ADMIN_EMAILS 부트스트랩 또는 admins 테이블 멤버십으로 관리자 판정. */
-async function checkAdmin(profile: ProfileRow, email: string | null): Promise<boolean> {
-  const env = getServerEnv();
-  if (email && env.adminEmails.includes(email.toLowerCase())) {
-    return true;
-  }
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("admins")
-    .select("id")
-    .eq("profile_id", profile.id)
-    .maybeSingle();
-  return Boolean(data);
+  return ctx;
 }
 
 /**

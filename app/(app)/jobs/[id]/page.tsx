@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { after } from "next/server";
 
 import { ArrowLeft, Building2, CalendarClock, MapPin } from "lucide-react";
 
@@ -42,16 +43,17 @@ export default async function JobDetailPage({
   const closed = j.status === "closed" || (!!j.deadline && j.deadline < today);
 
   if (!j.is_author) {
-    try {
-      await recordEvent({
+    // after()로 응답 전송 후 기록 — 조회수 INSERT 가 렌더를 막지 않는다.
+    after(() =>
+      recordEvent({
         eventType: "job_view",
         cohortHash: makeCohortHash(me.userId),
         profileId: me.profile.id,
         targetId: j.id,
-      });
-    } catch {
-      // 무시.
-    }
+      }).catch(() => {
+        // 분석 이벤트 실패는 무시.
+      }),
+    );
   }
 
   return (

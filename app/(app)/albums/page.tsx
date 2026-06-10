@@ -15,8 +15,6 @@ import { EMPTY } from "@/lib/messages";
  * 행사 사진(초상권)이라 서버에서도 requireMember 로 2차 가드한다.
  * 공개(is_public=true) 앨범만 노출.
  */
-export const dynamic = "force-dynamic";
-
 export default async function MemberAlbumsPage() {
   try {
     await requireMember();
