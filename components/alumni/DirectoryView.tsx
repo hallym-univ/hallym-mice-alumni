@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingSkeleton } from "@/components/common/LoadingSkeleton";
 import { EMPTY } from "@/lib/messages";
+import { cn } from "@/lib/utils";
 import type { PublicProfileCard } from "@/lib/profile/visibility";
 import type { TagRow } from "@/types/database";
 
@@ -85,7 +86,19 @@ export function DirectoryView({
     [applied],
   );
 
+  // 타이핑 즉시 검색 — 입력 멈춤 300ms 후 자동 적용(제출 불필요).
+  // 값이 같으면 prev 를 그대로 반환해 불필요한 재조회를 막는다(한글 조합 입력에도 안전).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setApplied((prev) =>
+        prev.q === filters.q ? prev : { ...prev, q: filters.q },
+      );
+    }, 300);
+    return () => clearTimeout(t);
+  }, [filters.q]);
+
   // applied 변경 시 첫 페이지 로드. (SSR 주입분이 있으면 첫 마운트는 생략.)
+  // 타이핑 중 깜빡임 방지: 이전 결과를 지우지 않고 흐리게 유지한 채 새 결과로 교체한다.
   useEffect(() => {
     if (skipFirstFetch.current) {
       skipFirstFetch.current = false;
@@ -93,7 +106,6 @@ export function DirectoryView({
     }
     let cancelled = false;
     setStatus("loading");
-    setItems([]);
     setCursor(0);
 
     (async () => {
@@ -155,7 +167,10 @@ export function DirectoryView({
   }
   function onSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setApplied((prev) => ({ ...prev, q: filters.q }));
+    // Enter = 즉시 적용(디바운스 대기 생략). 같은 값이면 재조회 안 함.
+    setApplied((prev) =>
+      prev.q === filters.q ? prev : { ...prev, q: filters.q },
+    );
   }
 
   return (
@@ -260,16 +275,16 @@ export function DirectoryView({
         )}
       </div>
 
-      {/* 리스트 영역 */}
+      {/* 리스트 영역 — 검색 중엔 이전 결과를 흐리게 유지(스켈레톤 깜빡임 방지) */}
       <div className="px-5 py-4">
-        {status === "loading" ? (
+        {status === "loading" && items.length === 0 ? (
           <LoadingSkeleton variant="list" count={5} />
         ) : status === "error" ? (
           <ErrorState
             description="목록을 불러오지 못했어요."
             onRetry={() => setApplied({ ...applied })}
           />
-        ) : items.length === 0 ? (
+        ) : status !== "loading" && items.length === 0 ? (
           hasQuery ? (
             <EmptyState
               title={EMPTY.searchZero.title}
@@ -285,7 +300,12 @@ export function DirectoryView({
             <EmptyState title={EMPTY.noData.title} description={EMPTY.noData.cta} />
           )
         ) : (
-          <div className="space-y-3">
+          <div
+            className={cn(
+              "space-y-3 transition-opacity",
+              status === "loading" && "opacity-50",
+            )}
+          >
             {items.map((p) => (
               <ProfileCard key={p.id} profile={p} />
             ))}
@@ -293,7 +313,7 @@ export function DirectoryView({
             {status === "loadingMore" ? (
               <LoadingSkeleton variant="list" count={2} />
             ) : null}
-            {cursor === null && items.length > 0 ? (
+            {cursor === null && status === "ready" && items.length > 0 ? (
               <p className="py-4 text-center text-xs text-muted-foreground">
                 모든 동문을 불러왔어요
               </p>

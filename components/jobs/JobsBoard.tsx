@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingSkeleton } from "@/components/common/LoadingSkeleton";
 import { EMPTY } from "@/lib/messages";
+import { cn } from "@/lib/utils";
 import { JOB_TYPE_LABEL, JOB_TYPE_OPTIONS } from "@/lib/labels";
 import type { JobListItem, JobListResult } from "@/lib/jobs/types";
 import type { TagRow } from "@/types/database";
@@ -73,6 +74,17 @@ export function JobsBoard({
     [applied],
   );
 
+  // 타이핑 즉시 검색 — 입력 멈춤 300ms 후 자동 적용(제출 불필요). 같은 값이면 재조회 안 함.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setApplied((prev) =>
+        prev.q === filters.q ? prev : { ...prev, q: filters.q },
+      );
+    }, 300);
+    return () => clearTimeout(t);
+  }, [filters.q]);
+
+  // applied 변경 시 첫 페이지 로드 — 타이핑 중 깜빡임 방지를 위해 이전 결과를 유지한다.
   useEffect(() => {
     if (skipFirstFetch.current) {
       skipFirstFetch.current = false;
@@ -80,7 +92,6 @@ export function JobsBoard({
     }
     let cancelled = false;
     setStatus("loading");
-    setItems([]);
     setCursor(0);
     (async () => {
       try {
@@ -139,7 +150,10 @@ export function JobsBoard({
   }
   function onSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setApplied((prev) => ({ ...prev, q: filters.q }));
+    // Enter = 즉시 적용(디바운스 대기 생략). 같은 값이면 재조회 안 함.
+    setApplied((prev) =>
+      prev.q === filters.q ? prev : { ...prev, q: filters.q },
+    );
   }
 
   return (
@@ -247,14 +261,14 @@ export function JobsBoard({
       </div>
 
       <div className="px-5 py-4">
-        {status === "loading" ? (
+        {status === "loading" && items.length === 0 ? (
           <LoadingSkeleton variant="list" count={5} />
         ) : status === "error" ? (
           <ErrorState
             description="목록을 불러오지 못했어요."
             onRetry={() => setApplied({ ...applied })}
           />
-        ) : items.length === 0 ? (
+        ) : status !== "loading" && items.length === 0 ? (
           hasQuery ? (
             <EmptyState
               title={EMPTY.jobsSearchZero.title}
@@ -273,7 +287,12 @@ export function JobsBoard({
             />
           )
         ) : (
-          <div className="space-y-3">
+          <div
+            className={cn(
+              "space-y-3 transition-opacity",
+              status === "loading" && "opacity-50",
+            )}
+          >
             {items.map((j) => (
               <JobCard key={j.id} job={j} />
             ))}
@@ -281,7 +300,7 @@ export function JobsBoard({
             {status === "loadingMore" ? (
               <LoadingSkeleton variant="list" count={2} />
             ) : null}
-            {cursor === null && items.length > 0 ? (
+            {cursor === null && status === "ready" && items.length > 0 ? (
               <p className="py-4 text-center text-xs text-muted-foreground">
                 모든 공고를 불러왔어요
               </p>
