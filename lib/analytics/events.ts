@@ -18,6 +18,11 @@ export type EventType =
   | "proposal_email_click"
   | "report_submit"
   // Phase 2/3
+  | "post_create"
+  | "comment_create"
+  | "profile_upload_url_request"
+  | "asset_upload_url_request"
+  | "remote_image_import"
   | "job_view"
   | "job_apply_click"
   | "job_bookmark"

@@ -4,6 +4,8 @@ import { isIP } from "node:net";
 
 import { withAuth } from "@/lib/guards/withAuth";
 import { getPublicUrl, uploadObject } from "@/lib/storage";
+import { makeCohortHash, recordEvent } from "@/lib/analytics/events";
+import { checkDailyLimit, RateLimitUnavailableError } from "@/lib/rate-limit";
 
 /**
  * POST /api/uploads/from-url — 외부 이미지 URL 을 서버가 가져와 R2 에 재호스팅.
@@ -18,6 +20,7 @@ import { getPublicUrl, uploadObject } from "@/lib/storage";
 
 const MAX_BYTES = 15 * 1024 * 1024; // 15MB
 const FETCH_TIMEOUT_MS = 10_000;
+const REMOTE_IMAGE_IMPORT_DAILY_LIMIT = 60;
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -26,7 +29,7 @@ const ALLOWED_TYPES = new Set([
 ]);
 
 export const POST = withAuth(
-  async (req) => {
+  async (req, { me }) => {
     // CSRF/교차사이트 차단: 피싱된 관리자를 통한 SSRF 오라클화 방지.
     // Sec-Fetch-Site 는 브라우저가 붙이며 JS로 위조 불가. 비-1st-party POST 거부.
     const secFetchSite = req.headers.get("sec-fetch-site")?.toLowerCase();
@@ -67,6 +70,29 @@ export const POST = withAuth(
         { error: "허용되지 않는 호스트예요." },
         { status: 400 },
       );
+    }
+
+    const cohortHash = makeCohortHash(me.userId);
+    try {
+      const rate = await checkDailyLimit({
+        cohortHash,
+        eventType: "remote_image_import",
+        limit: REMOTE_IMAGE_IMPORT_DAILY_LIMIT,
+      });
+      if (!rate.ok) {
+        return Response.json(
+          { error: "오늘 가져올 수 있는 원격 이미지 수를 모두 사용했어요." },
+          { status: 429 },
+        );
+      }
+    } catch (err) {
+      if (err instanceof RateLimitUnavailableError) {
+        return Response.json(
+          { error: "요청 제한 확인에 실패했어요. 잠시 후 다시 시도해주세요." },
+          { status: 503 },
+        );
+      }
+      throw err;
     }
 
     // 타임아웃은 헤더뿐 아니라 본문 스트리밍까지 커버한다(slowloris·느린 드립 방지).
@@ -175,6 +201,16 @@ export const POST = withAuth(
     } catch (err) {
       console.error("[uploads/from-url] R2 업로드 실패", err);
       return Response.json({ error: "저장에 실패했어요." }, { status: 500 });
+    }
+
+    try {
+      await recordEvent({
+        eventType: "remote_image_import",
+        cohortHash,
+        profileId: me.profile.id,
+      });
+    } catch (e) {
+      console.error("[uploads/from-url] event 기록 실패", e);
     }
 
     return Response.json({ key, url: getPublicUrl(key) });

@@ -192,6 +192,26 @@ function checkApiMutationBodyGuard() {
   }
 }
 
+function checkHighRiskMutationRateLimits() {
+  const expectations = new Map([
+    ["app/api/posts/route.ts", ["checkDailyLimit", "post_create"]],
+    ["app/api/posts/[id]/comments/route.ts", ["checkDailyLimit", "comment_create"]],
+    ["app/api/uploads/route.ts", ["checkDailyLimit", "profile_upload_url_request", "asset_upload_url_request"]],
+    ["app/api/uploads/from-url/route.ts", ["checkDailyLimit", "remote_image_import"]],
+    ["app/api/proposal/route.ts", ["checkDailyLimit", "proposal_email_click"]],
+    ["app/api/reports/route.ts", ["checkDailyLimit", "report_submit"]],
+  ]);
+
+  for (const [rel, fragments] of expectations) {
+    const source = read(rel);
+    for (const fragment of fragments) {
+      if (!source.includes(fragment)) {
+        addFailure(`${rel}: high-risk mutation must keep rate limit fragment ${fragment}`);
+      }
+    }
+  }
+}
+
 function checkProtectedRouteCachePolicy() {
   const source = read("middleware.ts");
   for (const fragment of [
@@ -351,6 +371,7 @@ checkApiRoutes();
 checkSecurityHeaders();
 checkSupabaseCookiePolicy();
 checkApiMutationBodyGuard();
+checkHighRiskMutationRateLimits();
 checkProtectedRouteCachePolicy();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);

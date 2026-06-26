@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 
 import { withAuth } from "@/lib/guards/withAuth";
 import { getSignedUploadUrl } from "@/lib/storage";
+import { makeCohortHash, recordEvent } from "@/lib/analytics/events";
+import { checkDailyLimit, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { uploadContentTypeSchema, uploadScopeSchema } from "@/lib/validators";
+
+const PROFILE_UPLOAD_URL_DAILY_LIMIT = 20;
+const ADMIN_ASSET_UPLOAD_URL_DAILY_LIMIT = 300;
 
 /**
  * POST /api/uploads — R2 presigned PUT URL 발급 (T-154 / §6.5-2, §9.2).
@@ -49,6 +54,38 @@ export const POST = withAuth(
       return Response.json({ error: "권한이 없어요." }, { status: 403 });
     }
 
+    const cohortHash = makeCohortHash(me.userId);
+    const eventType =
+      scopeStr === "profile"
+        ? "profile_upload_url_request"
+        : "asset_upload_url_request";
+    const dailyLimit =
+      scopeStr === "profile"
+        ? PROFILE_UPLOAD_URL_DAILY_LIMIT
+        : ADMIN_ASSET_UPLOAD_URL_DAILY_LIMIT;
+
+    try {
+      const rate = await checkDailyLimit({
+        cohortHash,
+        eventType,
+        limit: dailyLimit,
+      });
+      if (!rate.ok) {
+        return Response.json(
+          { error: "오늘 발급 가능한 업로드 URL 수를 모두 사용했어요." },
+          { status: 429 },
+        );
+      }
+    } catch (err) {
+      if (err instanceof RateLimitUnavailableError) {
+        return Response.json(
+          { error: "요청 제한 확인에 실패했어요. 잠시 후 다시 시도해주세요." },
+          { status: 503 },
+        );
+      }
+      throw err;
+    }
+
     const ext = mimeToExt(parsed.data);
     const prefix =
       scopeStr === "cover"
@@ -64,6 +101,15 @@ export const POST = withAuth(
       const { url } = await getSignedUploadUrl(key, parsed.data, {
         expiresInSeconds: 60 * 5,
       });
+      try {
+        await recordEvent({
+          eventType,
+          cohortHash,
+          profileId: me.profile.id,
+        });
+      } catch (e) {
+        console.error("[uploads] event 기록 실패", e);
+      }
       return Response.json({ url, key });
     } catch (err) {
       console.error("[uploads] presigned 발급 실패", err);
