@@ -50,6 +50,7 @@ export const POST = withAuth(
       sameTarget = await countTodayEvents({
         cohortHash,
         eventType: "report_submit",
+        maxRows: 1,
         targetId: target_id,
       });
     } catch (err) {

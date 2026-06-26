@@ -415,6 +415,22 @@ function checkSetNullForeignKeyNullability() {
 }
 
 function checkHighRiskMutationRateLimits() {
+  const rateLimit = read("lib/rate-limit.ts");
+  for (const fragment of [
+    "maxRows: number",
+    '.select("id")',
+    ".order(\"created_at\", { ascending: false })",
+    ".limit(params.maxRows)",
+    "maxRows: params.limit",
+  ]) {
+    if (!rateLimit.includes(fragment)) {
+      addFailure(`lib/rate-limit.ts: rate limit checks must keep bounded event lookup fragment ${fragment}`);
+    }
+  }
+  if (rateLimit.includes('count: "exact"') || rateLimit.includes("count: 'exact'")) {
+    addFailure("lib/rate-limit.ts: rate limit checks must not run exact counts on events");
+  }
+
   const expectations = new Map([
     ["app/api/events/route.ts", ["checkDailyLimit", "CLIENT_EVENT_DAILY_LIMIT", "CLIENT_EVENT_TARGET_DAILY_LIMIT"]],
     ["app/api/posts/route.ts", ["checkDailyLimit", "post_create"]],
