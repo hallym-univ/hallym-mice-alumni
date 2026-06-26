@@ -322,6 +322,26 @@ function checkUploadSigningPolicy() {
   }
 }
 
+function checkRemoteImageImportPolicy() {
+  const source = read("app/api/uploads/from-url/route.ts");
+  for (const fragment of [
+    "sec-fetch-site",
+    "parsed.username || parsed.password",
+    "isAllowedRemoteImagePort",
+    "isBlockedHost(parsed.hostname)",
+    "lookup(host, { all: true })",
+    "redirect: \"error\"",
+    "FETCH_TIMEOUT_MS",
+    "ALLOWED_TYPES",
+    "MAX_BYTES",
+    "reader.cancel()",
+  ]) {
+    if (!source.includes(fragment)) {
+      addFailure(`app/api/uploads/from-url/route.ts: missing remote image guard fragment ${fragment}`);
+    }
+  }
+}
+
 function checkOperationalIndexes() {
   const source = read("supabase/migrations/0007_operational_query_indexes.sql");
   for (const indexName of [
@@ -699,6 +719,7 @@ checkSupabaseCookiePolicy();
 checkApiMutationBodyGuard();
 checkHighRiskMutationRateLimits();
 checkUploadSigningPolicy();
+checkRemoteImageImportPolicy();
 checkOperationalIndexes();
 checkEventRetentionRollup();
 checkPostgrestSearchSanitization();

@@ -65,6 +65,12 @@ export const POST = withAuth(
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       return Response.json({ error: "http(s) URL 만 허용돼요." }, { status: 400 });
     }
+    if (parsed.username || parsed.password) {
+      return Response.json({ error: "URL 사용자 정보는 허용되지 않아요." }, { status: 400 });
+    }
+    if (!isAllowedRemoteImagePort(parsed)) {
+      return Response.json({ error: "허용되지 않는 URL 포트예요." }, { status: 400 });
+    }
     if (await isBlockedHost(parsed.hostname)) {
       return Response.json(
         { error: "허용되지 않는 호스트예요." },
@@ -217,6 +223,13 @@ export const POST = withAuth(
   },
   { role: "admin" },
 );
+
+function isAllowedRemoteImagePort(url: URL): boolean {
+  if (!url.port) return true;
+  if (url.protocol === "http:") return url.port === "80";
+  if (url.protocol === "https:") return url.port === "443";
+  return false;
+}
 
 /**
  * 호스트가 사설/루프백/링크로컬/메타데이터/NAT64로 해석되면 차단(SSRF 방어).
