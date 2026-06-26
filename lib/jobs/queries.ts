@@ -42,7 +42,7 @@ export async function listPublishedJobs(
 
   let query = admin
     .from("jobs")
-    .select(LIST_COLS, { count: "exact" })
+    .select(LIST_COLS)
     .eq("status", "published");
 
   if (filters.tagId) {
@@ -66,12 +66,12 @@ export async function listPublishedJobs(
 
   query = query
     .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(offset, offset + limit);
 
-  const { data, error, count } = await query;
+  const { data, error } = await query;
   if (error) throw new Error(`[jobs] 목록 조회 실패: ${error.message}`);
 
-  const rows = (data ?? []) as Array<
+  const rowsRaw = (data ?? []) as Array<
     Pick<
       JobRow,
       | "id"
@@ -86,13 +86,14 @@ export async function listPublishedJobs(
       | "created_at"
     >
   >;
+  const rows = rowsRaw.slice(0, limit);
   const items = await shapeJobList(me, rows);
 
-  const hasMore = items.length === limit;
+  const hasMore = rowsRaw.length > limit;
   return {
     items,
     nextCursor: hasMore ? offset + limit : null,
-    total: count ?? null,
+    total: null,
   };
 }
 

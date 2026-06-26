@@ -41,6 +41,7 @@ export default async function HomePage() {
     alumniCountRes,
     coffeechatCountRes,
     recentProfileRes,
+    jobCountRes,
     postCountRes,
     directory,
     jobsRes,
@@ -69,6 +70,10 @@ export default async function HomePage() {
         .eq("is_public", true)
         .gte("updated_at", since)
         .is("deleted_at", null),
+      admin
+        .from("jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "published"),
       admin
         .from("posts")
         .select("id", { count: "exact", head: true })
@@ -106,7 +111,7 @@ export default async function HomePage() {
             href="/jobs"
             icon={Briefcase}
             label="진행 중 기회"
-            value={jobsRes.total ?? latestJobs.length}
+            value={jobCountRes.count ?? latestJobs.length}
           />
           <Stat
             href="/connect"

@@ -865,6 +865,48 @@ function checkConnectEngagementAggregation() {
   }
 }
 
+function checkMemberListPaginationPolicy() {
+  for (const [rel, fragments] of [
+    [
+      "lib/profile/queries.ts",
+      [
+        ".range(offset, offset + limit)",
+        "const rowsRaw = (data ?? []) as RowWithTags[]",
+        "const rows = rowsRaw.slice(0, limit)",
+        "const hasMore = rowsRaw.length > limit",
+        "total: null",
+      ],
+    ],
+    [
+      "lib/jobs/queries.ts",
+      [
+        ".range(offset, offset + limit)",
+        "const rowsRaw = (data ?? []) as Array<",
+        "const rows = rowsRaw.slice(0, limit)",
+        "const hasMore = rowsRaw.length > limit",
+        "total: null",
+      ],
+    ],
+  ]) {
+    const source = read(rel);
+    for (const fragment of fragments) {
+      if (!source.includes(fragment)) {
+        addFailure(`${rel}: member list queries must use limit+1 pagination fragment ${fragment}`);
+      }
+    }
+  }
+
+  const profileQueries = read("lib/profile/queries.ts");
+  if (profileQueries.includes('{ count: "exact" }')) {
+    addFailure("lib/profile/queries.ts: member directory list must not run exact count on every page");
+  }
+
+  const jobQueries = read("lib/jobs/queries.ts");
+  if (jobQueries.includes('select(LIST_COLS, { count: "exact" })')) {
+    addFailure("lib/jobs/queries.ts: member jobs list must not run exact count on every page");
+  }
+}
+
 function checkExternalLinks(files) {
   for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
     const source = read(rel);
@@ -1114,6 +1156,7 @@ checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
 checkConnectCommentPreviewLimit();
 checkConnectEngagementAggregation();
+checkMemberListPaginationPolicy();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkMarkdownUrlPolicy();

@@ -71,7 +71,6 @@ export async function listDirectory(
     .select(
       // profile_tags→tags 임베드로 태그를 같은 왕복에 가져온다(후행 태그 쿼리 제거).
       "id,user_id,name,role,status,is_verified,student_number,admission_year,graduation_year,department,organization,employment_status,position,bio,career_summary,coffeechat_status,open_kakao_url,proposal_email_allowed,photo_path,is_public,field_visibility,deleted_at,anonymized_at,created_at,updated_at, profile_tags(tags(id,name,category))",
-      { count: "exact" },
     )
     .eq("status", "active")
     .eq("is_public", true)
@@ -110,9 +109,9 @@ export async function listDirectory(
 
   query = query
     .order("updated_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(offset, offset + limit);
 
-  const { data, error, count } = await query;
+  const { data, error } = await query;
   if (error) {
     throw new Error(`[directory] 조회 실패: ${error.message}`);
   }
@@ -121,7 +120,8 @@ export async function listDirectory(
   type RowWithTags = ProfileRow & {
     profile_tags: Array<{ tags: TagRow | TagRow[] | null }> | null;
   };
-  const rows = (data ?? []) as RowWithTags[];
+  const rowsRaw = (data ?? []) as RowWithTags[];
+  const rows = rowsRaw.slice(0, limit);
 
   const items = rows.map((row) => {
     const { profile_tags, ...profile } = row;
@@ -134,11 +134,11 @@ export async function listDirectory(
     });
   });
 
-  const hasMore = items.length === limit;
+  const hasMore = rowsRaw.length > limit;
   return {
     items,
     nextCursor: hasMore ? offset + limit : null,
-    total: count ?? null,
+    total: null,
   };
 }
 
