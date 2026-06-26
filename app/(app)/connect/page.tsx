@@ -227,7 +227,7 @@ function PostFeedCard({
         isLiked={post.is_liked}
         shareUrl={shareUrl}
       />
-      <CommentsPanel postId={post.id} />
+      <CommentsPanel postId={post.id} commentCount={post.comment_count} />
     </Card>
   );
 }

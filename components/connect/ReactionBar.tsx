@@ -67,6 +67,12 @@ export function ReactionBar({
     await navigator.clipboard?.writeText(url).catch(() => undefined);
   }
 
+  function openComments() {
+    const panel = document.getElementById(`comments-${postId}`);
+    panel?.dispatchEvent(new CustomEvent("connect:open-comments"));
+    panel?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   return (
     <div className="flex items-center justify-between border-t pt-3">
       <Button type="button" variant="ghost" size="sm" onClick={toggleLike}>
@@ -77,11 +83,7 @@ export function ReactionBar({
         type="button"
         variant="ghost"
         size="sm"
-        onClick={() =>
-          document
-            .getElementById(`comments-${postId}`)
-            ?.scrollIntoView({ behavior: "smooth", block: "center" })
-        }
+        onClick={openComments}
       >
         <MessageCircle />
         {commentCount}
