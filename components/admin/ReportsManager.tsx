@@ -40,6 +40,7 @@ type ReportWithTarget = ReportRow & {
 function targetHref(r: ReportWithTarget): string {
   if (r.target_type === "job") return `/jobs/${r.target_id}`;
   if (r.target_type === "article") return `/admin/content/${r.target_id}`;
+  if (r.target_type === "post" || r.target_type === "comment") return "/connect";
   return `/alumni/${r.target_id}`;
 }
 
@@ -65,6 +66,8 @@ const TARGET_LABEL: Record<string, string> = {
   profile: "프로필",
   job: "공고",
   article: "콘텐츠",
+  post: "게시글",
+  comment: "댓글",
 };
 
 export function ReportsManager({ initialStatus }: { initialStatus: string }) {

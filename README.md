@@ -84,7 +84,7 @@ npm run build                # 프로덕션 빌드
 
 > 모든 외부 서비스는 **프로젝트 공용 계정 1개**로 생성·소유한다(개인 계정 금지, MFA 필수).
 
-1. **Supabase**: 프로젝트 생성 → SQL Editor에서 [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) 전체 실행(18테이블 + 전 테이블 RLS ENABLE) → `supabase/seed.sql`(태그) → Settings·API에서 `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY` 확보.
+1. **Supabase**: 프로젝트 생성 → SQL Editor 또는 Supabase CLI로 `supabase/migrations/*.sql`을 파일명 순서대로 전체 실행(테이블 + RLS ENABLE + 후속 기능 스키마) → `supabase/seed.sql`(태그) → Settings·API에서 `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY` 확보.
 2. **Google OAuth**: Cloud Console에서 OAuth 동의화면 + 웹 클라이언트 → Supabase Auth·Providers·Google에 Client ID/Secret 입력 → Google "승인된 리디렉션 URI"에 `https://<supabase-ref>.supabase.co/auth/v1/callback` 등록.
 3. **Cloudflare R2**: 버킷 생성 → API 토큰(Object R/W) → `R2_*` 4개 + 공개 `r2.dev` 도메인 `NEXT_PUBLIC_R2_PUBLIC_BASE_URL`. (브라우저 직접 PUT용 **CORS**: 허용 origin = 배포 도메인 + localhost, 메서드 PUT/GET.)
 4. **Resend**: API 키 `RESEND_API_KEY` + **발신 도메인 인증**(미인증 시 제안 메일 발송 실패 — `lib/email/proposal.ts`의 `FROM_ADDRESS` 교체 필요).
@@ -152,7 +152,7 @@ lib/
   supabase/(server·client·admin) · guards/(withAuth·page·requireMember·requireAdmin)
   storage/(R2) · jobs/ · content/ · notifications/ · profile/(queries·visibility)
   validators/ · analytics/events · search · messages · labels · env · utils · hooks/useReveal
-supabase/migrations/0001_init.sql · seed.sql      middleware.ts      docs/
+supabase/migrations/*.sql · seed.sql      middleware.ts      docs/
 ```
 
 ---

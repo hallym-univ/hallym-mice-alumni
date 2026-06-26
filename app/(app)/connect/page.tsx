@@ -5,6 +5,7 @@ import { ExternalLink, Search } from "lucide-react";
 import { CommentsPanel } from "@/components/connect/CommentsPanel";
 import { PostComposer, type ImportableContent } from "@/components/connect/PostComposer";
 import { ReactionBar } from "@/components/connect/ReactionBar";
+import { ReportButton } from "@/components/connect/ReportButton";
 import { Avatar } from "@/components/profile/Avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -157,7 +158,10 @@ function PostFeedCard({ post }: { post: PostListItem }) {
               POST_TYPE_LABEL[post.post_type]}
           </p>
         </div>
-        <Badge variant="secondary">{POST_TYPE_LABEL[post.post_type]}</Badge>
+        <div className="flex shrink-0 items-center gap-1">
+          <Badge variant="secondary">{POST_TYPE_LABEL[post.post_type]}</Badge>
+          <ReportButton targetType="post" targetId={post.id} label="게시글 신고" compact />
+        </div>
       </div>
 
       <div>

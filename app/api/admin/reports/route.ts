@@ -12,7 +12,7 @@ import type { ProfileRow, ReportRow } from "@/types/database";
  *
  * 상태머신: open → reviewing → resolved / dismissed.
  * 액션:
- *   - hide   : 대상 숨김(profile=is_public false, job/article=status 'hidden').
+ *   - hide   : 대상 숨김(profile=is_public false, job/article/post/comment=status 'hidden').
  *   - suspend: 신고 대상이 회원(profile)이면 status='suspended'.
  * 모든 처리는 admin_logs 에 기록한다(§6.7 완료 기준).
  */
@@ -63,13 +63,19 @@ export const GET = withAuth(
       }
     }
 
-    // job/article 신고는 제목을 함께 첨부(관리자가 무엇을 숨기는지 확인 가능하게).
+    // 콘텐츠 신고는 제목/본문 일부를 함께 첨부(관리자가 무엇을 숨기는지 확인 가능하게).
     const titleMap = new Map<string, string>();
     const jobIds = reports
       .filter((r) => r.target_type === "job")
       .map((r) => r.target_id);
     const articleIds = reports
       .filter((r) => r.target_type === "article")
+      .map((r) => r.target_id);
+    const postIds = reports
+      .filter((r) => r.target_type === "post")
+      .map((r) => r.target_id);
+    const commentIds = reports
+      .filter((r) => r.target_type === "comment")
       .map((r) => r.target_id);
     if (jobIds.length > 0) {
       const { data: jobs } = await admin
@@ -86,6 +92,23 @@ export const GET = withAuth(
         .in("id", articleIds);
       for (const a of (arts ?? []) as Array<{ id: string; title: string }>)
         titleMap.set(a.id, a.title);
+    }
+    if (postIds.length > 0) {
+      const { data: posts } = await admin
+        .from("posts")
+        .select("id, title")
+        .in("id", postIds);
+      for (const p of (posts ?? []) as Array<{ id: string; title: string }>)
+        titleMap.set(p.id, p.title);
+    }
+    if (commentIds.length > 0) {
+      const { data: comments } = await admin
+        .from("comments")
+        .select("id, body")
+        .in("id", commentIds);
+      for (const c of (comments ?? []) as Array<{ id: string; body: string }>) {
+        titleMap.set(c.id, c.body.length > 60 ? `${c.body.slice(0, 57)}...` : c.body);
+      }
     }
 
     return Response.json({
@@ -216,8 +239,7 @@ async function applyTargetAction(
     if (error) {
       return { ok: false, status: 500, message: "프로필 숨김에 실패했어요." };
     }
-  } else {
-    // job / article — status 컬럼을 'hidden' 으로.
+  } else if (targetType === "job" || targetType === "article") {
     const table = targetType === "job" ? "jobs" : "articles";
     const { error } = await admin
       .from(table)
@@ -225,6 +247,22 @@ async function applyTargetAction(
       .eq("id", targetId);
     if (error) {
       return { ok: false, status: 500, message: "콘텐츠 숨김에 실패했어요." };
+    }
+  } else if (targetType === "post") {
+    const { error } = await admin
+      .from("posts")
+      .update({ status: "hidden" })
+      .eq("id", targetId);
+    if (error) {
+      return { ok: false, status: 500, message: "게시글 숨김에 실패했어요." };
+    }
+  } else if (targetType === "comment") {
+    const { error } = await admin
+      .from("comments")
+      .update({ status: "hidden" })
+      .eq("id", targetId);
+    if (error) {
+      return { ok: false, status: 500, message: "댓글 숨김에 실패했어요." };
     }
   }
   await recordAdminLog({

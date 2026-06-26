@@ -335,7 +335,7 @@ export const proposalSchema = z.object({
 
 /** 신고 접수 입력(사용자측 — profile 대상 위주). */
 export const reportSchema = z.object({
-  target_type: z.enum(["profile", "job", "article"]),
+  target_type: z.enum(["profile", "job", "article", "post", "comment"]),
   target_id: z.string().uuid(),
   reason: z.string().trim().max(500).optional().transform((v) => (v && v.length > 0 ? v : null)),
 });

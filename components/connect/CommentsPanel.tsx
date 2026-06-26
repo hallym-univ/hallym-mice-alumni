@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
 
 import { Avatar } from "@/components/profile/Avatar";
+import { ReportButton } from "@/components/connect/ReportButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -80,9 +81,17 @@ export function CommentsPanel({ postId }: { postId: string }) {
                 size={28}
               />
               <div className="min-w-0 rounded-md bg-muted px-3 py-2">
-                <p className="text-xs font-medium">
-                  {comment.author?.name ?? "동문"}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium">
+                    {comment.author?.name ?? "동문"}
+                  </p>
+                  <ReportButton
+                    targetType="comment"
+                    targetId={comment.id}
+                    label="신고"
+                    compact
+                  />
+                </div>
                 <p className="text-sm">{comment.body}</p>
               </div>
             </div>
