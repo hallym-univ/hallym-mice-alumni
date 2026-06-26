@@ -90,10 +90,12 @@ export async function listDirectory(
     }
   }
   if (filters.organization) {
-    query = query.ilike("organization", `%${filters.organization}%`);
+    const term = toSafeIlikePattern(filters.organization);
+    if (term) query = query.ilike("organization", term);
   }
   if (filters.position) {
-    query = query.ilike("position", `%${filters.position}%`);
+    const term = toSafeIlikePattern(filters.position);
+    if (term) query = query.ilike("position", term);
   }
   if (filters.graduationYear) {
     query = query.eq("graduation_year", filters.graduationYear);

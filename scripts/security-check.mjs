@@ -304,6 +304,35 @@ function checkPostgrestSearchSanitization() {
   }
 }
 
+function checkListQueryParamValidation() {
+  const validators = read("lib/validators/index.ts");
+  for (const fragment of [
+    "profileListQuerySchema",
+    "jobListQuerySchema",
+    "optionalCursorSchema",
+    "optionalLimitSchema",
+    ".max(5000",
+    ".max(50",
+  ]) {
+    if (!validators.includes(fragment)) {
+      addFailure(`lib/validators/index.ts: missing list query validation fragment ${fragment}`);
+    }
+  }
+
+  for (const [rel, schema] of [
+    ["app/api/profiles/route.ts", "profileListQuerySchema"],
+    ["app/api/jobs/route.ts", "jobListQuerySchema"],
+  ]) {
+    const source = read(rel);
+    if (!source.includes(schema) || !source.includes("safeParse(Object.fromEntries(sp))")) {
+      addFailure(`${rel}: list query params must be validated with ${schema}`);
+    }
+    if (source.includes("Number(") || source.includes(" as JobType")) {
+      addFailure(`${rel}: list query params must not be parsed with unchecked casts`);
+    }
+  }
+}
+
 function checkClientWritableEventTypes() {
   const source = read("lib/validators/index.ts");
   const start = source.indexOf("export const clientEventInputSchema");
@@ -493,6 +522,7 @@ checkHighRiskMutationRateLimits();
 checkUploadSigningPolicy();
 checkOperationalIndexes();
 checkPostgrestSearchSanitization();
+checkListQueryParamValidation();
 checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
 checkExternalLinks(files);

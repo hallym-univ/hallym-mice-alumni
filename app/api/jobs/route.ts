@@ -1,9 +1,8 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getInitialJobStatus } from "@/lib/jobs/policy";
-import { jobInputSchema } from "@/lib/validators";
+import { jobInputSchema, jobListQuerySchema } from "@/lib/validators";
 import { listPublishedJobs } from "@/lib/jobs/queries";
-import type { JobType } from "@/types/database";
 
 /**
  * GET  /api/jobs — 게시중 공고 목록/검색 (§6.4). 회원(active)만.
@@ -14,15 +13,21 @@ import type { JobType } from "@/types/database";
 export const GET = withAuth(
   async (req, { me }) => {
     const sp = new URL(req.url).searchParams;
-    const typeRaw = sp.get("type")?.trim();
-    const cursorRaw = sp.get("cursor");
+    const parsed = jobListQuerySchema.safeParse(Object.fromEntries(sp));
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "검색 조건을 확인해주세요." },
+        { status: 400 },
+      );
+    }
+    const input = parsed.data;
 
     try {
       const result = await listPublishedJobs(me, {
-        q: sp.get("q")?.trim() || undefined,
-        jobType: (typeRaw || undefined) as JobType | undefined,
-        tagId: sp.get("tag")?.trim() || undefined,
-        cursor: cursorRaw ? Number(cursorRaw) : undefined,
+        q: input.q,
+        jobType: input.type,
+        tagId: input.tag,
+        cursor: input.cursor,
       });
       return Response.json(result);
     } catch (e) {

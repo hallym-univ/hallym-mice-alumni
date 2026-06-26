@@ -1,5 +1,6 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { listDirectory } from "@/lib/profile/queries";
+import { profileListQuerySchema } from "@/lib/validators";
 
 /**
  * GET /api/profiles — 동문 디렉토리 목록/검색 (§6.2 / T-202).
@@ -11,22 +12,25 @@ export const GET = withAuth(
   async (req, { me }) => {
     const url = new URL(req.url);
     const sp = url.searchParams;
-
-    const yearRaw = sp.get("year");
-    const cursorRaw = sp.get("cursor");
-    const limitRaw = sp.get("limit");
+    const parsed = profileListQuerySchema.safeParse(Object.fromEntries(sp));
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "검색 조건을 확인해주세요." },
+        { status: 400 },
+      );
+    }
+    const input = parsed.data;
 
     try {
       const result = await listDirectory(me, {
-        q: sp.get("q")?.trim() || undefined,
-        organization: sp.get("organization")?.trim() || undefined,
-        position: sp.get("position")?.trim() || undefined,
-        tagId: sp.get("tag")?.trim() || undefined,
-        graduationYear:
-          yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : undefined,
-        coffeechatOpen: sp.get("coffeechat") === "open",
-        cursor: cursorRaw ? Number(cursorRaw) : undefined,
-        limit: limitRaw ? Number(limitRaw) : undefined,
+        q: input.q,
+        organization: input.organization,
+        position: input.position,
+        tagId: input.tag,
+        graduationYear: input.year,
+        coffeechatOpen: input.coffeechat === "open",
+        cursor: input.cursor,
+        limit: input.limit,
       });
 
       return Response.json(result);

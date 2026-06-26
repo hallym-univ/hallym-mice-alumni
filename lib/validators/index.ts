@@ -133,6 +133,87 @@ export const profileRoleSchema = z.enum([
 
 const routeUuidSchema = z.string().uuid("잘못된 경로예요.");
 
+const optionalQueryTextSchema = (max: number, message: string) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value !== "string") return undefined;
+      const trimmed = value.trim();
+      return trimmed ? trimmed : undefined;
+    },
+    z.string().max(max, message).optional(),
+  );
+
+const optionalQueryUuidSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  },
+  z.string().uuid("필터 식별자가 올바르지 않아요.").optional(),
+);
+
+const optionalCursorSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  },
+  z.coerce
+    .number()
+    .int("cursor 는 정수여야 해요.")
+    .min(0, "cursor 는 0 이상이어야 해요.")
+    .max(5000, "cursor 범위가 너무 커요.")
+    .optional(),
+);
+
+const optionalLimitSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  },
+  z.coerce
+    .number()
+    .int("limit 은 정수여야 해요.")
+    .min(1, "limit 은 1 이상이어야 해요.")
+    .max(50, "limit 은 최대 50까지 가능해요.")
+    .optional(),
+);
+
+const optionalYearQuerySchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  },
+  z.coerce
+    .number()
+    .int("연도는 정수여야 해요.")
+    .min(1980, "연도 범위가 올바르지 않아요.")
+    .max(new Date().getFullYear() + 6, "연도 범위가 올바르지 않아요.")
+    .optional(),
+);
+
+const optionalCoffeechatQuerySchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  },
+  z.enum(["open"], { errorMap: () => ({ message: "커피챗 필터가 올바르지 않아요." }) }).optional(),
+);
+
+export const profileListQuerySchema = z.object({
+  q: optionalQueryTextSchema(100, "검색어는 100자까지 가능해요."),
+  organization: optionalQueryTextSchema(100, "소속 필터는 100자까지 가능해요."),
+  position: optionalQueryTextSchema(100, "직무 필터는 100자까지 가능해요."),
+  tag: optionalQueryUuidSchema,
+  year: optionalYearQuerySchema,
+  coffeechat: optionalCoffeechatQuerySchema,
+  cursor: optionalCursorSchema,
+  limit: optionalLimitSchema,
+});
+
 export async function resolveRouteUuidParam<K extends string>(
   params: Promise<Record<K, string | undefined>> | undefined,
   key: K,
@@ -455,6 +536,20 @@ export const jobTypeSchema = z.enum([
   "contest",
   "etc",
 ]);
+
+export const jobListQuerySchema = z.object({
+  q: optionalQueryTextSchema(100, "검색어는 100자까지 가능해요."),
+  type: z.preprocess(
+    (value) => {
+      if (typeof value !== "string") return undefined;
+      const trimmed = value.trim();
+      return trimmed ? trimmed : undefined;
+    },
+    jobTypeSchema.optional(),
+  ),
+  tag: optionalQueryUuidSchema,
+  cursor: optionalCursorSchema,
+});
 
 /** 공고 상태머신(draft→pending→published→closed/hidden). 관리자/작성자 전환용. */
 export const jobStatusSchema = z.enum([
