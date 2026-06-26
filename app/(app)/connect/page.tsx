@@ -233,7 +233,7 @@ function PostFeedCard({
 }
 
 function PostAttachment({ attachment }: { attachment: AttachedContentPreview }) {
-  return <AttachedContentCard item={attachment} className="bg-background" />;
+  return <AttachedContentCard item={attachment} compact className="bg-muted/20" />;
 }
 
 function resolveAttachment(

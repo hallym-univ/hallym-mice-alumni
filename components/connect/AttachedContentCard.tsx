@@ -25,10 +25,12 @@ export function AttachedContentCard({
   item,
   action,
   className,
+  compact = false,
 }: {
   item: AttachedContentPreview;
   action?: ReactNode;
   className?: string;
+  compact?: boolean;
 }) {
   const isInternal = item.href.startsWith("/");
   const Icon = getAttachmentIcon(item.href);
@@ -36,25 +38,37 @@ export function AttachedContentCard({
   const content = (
     <Card
       className={cn(
-        "flex items-center gap-3 p-3 transition-colors",
+        "flex items-center transition-colors",
+        compact ? "gap-2.5 rounded-md p-2 shadow-none" : "gap-3 p-3",
         isInternal ? "hover:bg-accent/40" : "hover:bg-accent/30",
         className,
       )}
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-        <Icon className="h-4 w-4" />
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
+          compact ? "h-8 w-8" : "h-10 w-10",
+        )}
+      >
+        <Icon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span>첨부</span>
+          <span aria-hidden="true">·</span>
           <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
             {item.kindLabel}
           </Badge>
-          <span className="text-[11px] text-muted-foreground">첨부</span>
         </div>
-        <p className="mt-1 line-clamp-1 text-sm font-medium leading-snug">
+        <p
+          className={cn(
+            "line-clamp-1 font-medium leading-snug",
+            compact ? "mt-0.5 text-xs" : "mt-1 text-sm",
+          )}
+        >
           {item.title}
         </p>
-        {description ? (
+        {description && !compact ? (
           <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
             {description}
           </p>

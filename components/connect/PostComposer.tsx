@@ -3,10 +3,9 @@
 import { useState } from "react";
 
 import { useRouter } from "next/navigation";
-import { Send, X } from "lucide-react";
+import { Paperclip, Send, X } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AttachedContentCard } from "@/components/connect/AttachedContentCard";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -92,7 +91,7 @@ export function PostComposer({
         onChange={(e) => setBody(e.target.value)}
         placeholder={
           selectedContent
-            ? "전할 말을 덧붙여보세요. (선택)"
+            ? "공유 이유나 한 줄 코멘트를 적어보세요. (선택)"
             : "동문에게 공유할 경험, 질문, 프로젝트 모집, 행사 소식을 적어보세요."
         }
         rows={selectedContent ? 3 : 4}
@@ -100,27 +99,27 @@ export function PostComposer({
       />
 
       {selectedContent ? (
-        <AttachedContentCard
-          item={{
-            href: selectedContent.href,
-            kindLabel: selectedContent.kindLabel,
-            title: selectedContent.title,
-            description: selectedContent.body,
-          }}
-          className="bg-background"
-          action={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setSelectedContentId("none")}
-              aria-label="첨부 제거"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          }
-        />
+        <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground">
+            <Paperclip className="h-3.5 w-3.5" />
+          </span>
+          <div className="min-w-0 flex-1 text-xs">
+            <p className="text-[11px] text-muted-foreground">
+              첨부됨 · {selectedContent.kindLabel}
+            </p>
+            <p className="mt-0.5 truncate font-medium">{selectedContent.title}</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => setSelectedContentId("none")}
+            aria-label="첨부 제거"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       ) : null}
 
       <div className="flex items-center gap-2">
@@ -139,7 +138,7 @@ export function PostComposer({
         <Select value={selectedContentId} onValueChange={applyInternalContent}>
           <SelectTrigger className="h-8 flex-1 text-xs">
             <span className="truncate">
-              {selectedContent ? `${selectedContent.kindLabel} 첨부됨` : "콘텐츠 첨부"}
+              {selectedContent ? "첨부 변경" : "내부 콘텐츠 첨부"}
             </span>
           </SelectTrigger>
           <SelectContent>
