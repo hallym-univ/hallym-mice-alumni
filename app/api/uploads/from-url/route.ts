@@ -13,8 +13,8 @@ import { checkDailyLimit, RateLimitUnavailableError } from "@/lib/rate-limit";
  * 용도: 본문 에디터에 노션 등에서 붙여넣은 이미지(임시 서명 URL)를 영구 보관용으로 옮긴다.
  * 운영자(콘텐츠 작성자)만 사용한다(role: admin).
  *
- * 보안(SSRF): 서버가 임의 URL 을 fetch 하므로 — http(s)만 허용, 사설/루프백/링크로컬/메타데이터
- * IP 차단(DNS 해석 후 검사), 리다이렉트 거부, 타임아웃, 이미지 content-type·크기 제한.
+ * 보안(SSRF): 서버가 임의 URL 을 fetch 하므로 — https만 허용, 사설/루프백/링크로컬/메타데이터
+ * IP 차단(DNS 해석 후 검사), HTTPS 강제, 리다이렉트 거부, 타임아웃, 이미지 content-type·크기 제한.
  * (admin 전용이라 신뢰 경계가 좁지만 심층 방어로 가드한다. DNS 리바인딩은 잔여 위험으로 수용.)
  */
 
@@ -62,8 +62,8 @@ export const POST = withAuth(
     } catch {
       return Response.json({ error: "올바른 URL 이 아니에요." }, { status: 400 });
     }
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return Response.json({ error: "http(s) URL 만 허용돼요." }, { status: 400 });
+    if (parsed.protocol !== "https:") {
+      return Response.json({ error: "https URL 만 허용돼요." }, { status: 400 });
     }
     if (parsed.username || parsed.password) {
       return Response.json({ error: "URL 사용자 정보는 허용되지 않아요." }, { status: 400 });
@@ -226,7 +226,6 @@ export const POST = withAuth(
 
 function isAllowedRemoteImagePort(url: URL): boolean {
   if (!url.port) return true;
-  if (url.protocol === "http:") return url.port === "80";
   if (url.protocol === "https:") return url.port === "443";
   return false;
 }

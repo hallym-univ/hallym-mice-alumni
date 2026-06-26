@@ -330,8 +330,10 @@ function checkRemoteImageImportPolicy() {
   const source = read("app/api/uploads/from-url/route.ts");
   for (const fragment of [
     "sec-fetch-site",
+    'parsed.protocol !== "https:"',
     "parsed.username || parsed.password",
     "isAllowedRemoteImagePort",
+    'url.protocol === "https:"',
     "isBlockedHost(parsed.hostname)",
     "lookup(host, { all: true })",
     "redirect: \"error\"",
@@ -343,6 +345,9 @@ function checkRemoteImageImportPolicy() {
     if (!source.includes(fragment)) {
       addFailure(`app/api/uploads/from-url/route.ts: missing remote image guard fragment ${fragment}`);
     }
+  }
+  if (source.includes('parsed.protocol !== "http:"') || source.includes('url.protocol === "http:"')) {
+    addFailure("app/api/uploads/from-url/route.ts: remote image import must be HTTPS-only");
   }
 }
 
