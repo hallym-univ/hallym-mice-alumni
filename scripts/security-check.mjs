@@ -190,6 +190,32 @@ function checkPublicAssetUrlPolicy() {
   }
 }
 
+function checkAuthRedirectPolicy() {
+  const policy = read("lib/auth/redirect.ts");
+  for (const fragment of [
+    "normalizeInternalNext",
+    "DEFAULT_AUTH_NEXT",
+    'value.startsWith("//")',
+    '"http://internal.local"',
+  ]) {
+    if (!policy.includes(fragment)) {
+      addFailure(`lib/auth/redirect.ts: missing auth redirect policy fragment ${fragment}`);
+    }
+  }
+
+  for (const rel of ["app/auth/callback/route.ts", "app/(public)/login/login-button.tsx"]) {
+    const source = read(rel);
+    if (!source.includes('from "@/lib/auth/redirect"') || !source.includes("normalizeInternalNext(")) {
+      addFailure(`${rel}: OAuth next value must be normalized with normalizeInternalNext`);
+    }
+  }
+
+  const loginButton = read("app/(public)/login/login-button.tsx");
+  if (loginButton.includes('searchParams.get("next") ??')) {
+    addFailure("app/(public)/login/login-button.tsx: raw next fallback must not enter OAuth redirectTo");
+  }
+}
+
 function checkSupabaseCookiePolicy() {
   const cookiePolicy = read("lib/supabase/cookies.ts");
   for (const fragment of [
@@ -614,6 +640,7 @@ checkSensitiveLibsAreServerOnly(files);
 checkApiRoutes();
 checkSecurityHeaders();
 checkPublicAssetUrlPolicy();
+checkAuthRedirectPolicy();
 checkSupabaseCookiePolicy();
 checkApiMutationBodyGuard();
 checkHighRiskMutationRateLimits();

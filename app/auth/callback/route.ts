@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { normalizeInternalNext } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -30,15 +31,4 @@ export async function GET(request: NextRequest) {
 
   // 실패 시 로그인으로(에러 표시는 feature 단계).
   return NextResponse.redirect(`${origin}/login?error=auth`);
-}
-
-function normalizeInternalNext(value: string | null): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/home";
-
-  try {
-    const url = new URL(value, "http://internal.local");
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return "/home";
-  }
 }

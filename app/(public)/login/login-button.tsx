@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { normalizeInternalNext } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/client";
 import { publicEnv } from "@/lib/env";
 
@@ -20,7 +21,7 @@ export function LoginButton() {
   async function handleLogin() {
     setLoading(true);
     const supabase = createClient();
-    const next = searchParams.get("next") ?? "/home";
+    const next = normalizeInternalNext(searchParams.get("next"));
     // 사용자가 실제 접속한 도메인을 기준으로 콜백을 만든다(브라우저라 origin이 항상 정확).
     // 빌드타임 SITE_URL이 틀리거나 도메인이 바뀌어도 로그인 루프가 생기지 않게 하는 안전장치.
     // SSR/비브라우저 폴백으로만 publicEnv.siteUrl 사용.
