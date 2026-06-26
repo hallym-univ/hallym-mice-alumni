@@ -29,6 +29,16 @@ function addFailure(message) {
   failures.push(message);
 }
 
+function trackedFiles() {
+  return execFileSync("git", ["ls-files"], {
+    cwd: root,
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter(Boolean)
+    .map((rel) => rel.split(path.sep).join("/"));
+}
+
 function importsOf(source) {
   const imports = [];
   const importRe =
@@ -859,12 +869,14 @@ function checkMarkdownUrlPolicy() {
 }
 
 function checkEnvFiles() {
-  const trackedEnv = execFileSync("git", ["ls-files", ".env", ".env.local", ".vercel"], {
-    cwd: root,
-    encoding: "utf8",
-  })
-    .split("\n")
-    .filter(Boolean);
+  const trackedEnv = trackedFiles().filter((rel) => {
+    const name = path.basename(rel);
+    return (
+      (name.startsWith(".env") && rel !== ".env.example") ||
+      rel.startsWith(".vercel/") ||
+      rel === "docs/FORK_ENV.private.md"
+    );
+  });
   if (trackedEnv.length > 0) {
     addFailure(`secret env files are tracked by git: ${trackedEnv.join(", ")}`);
   }
@@ -881,6 +893,26 @@ function checkEnvFiles() {
       addFailure(`.env.example: ${name} must not contain a real value`);
     }
   }
+}
+
+function checkTrackedSecretValues() {
+  const sensitiveValues = loadSensitiveEnvValues();
+  if (sensitiveValues.length === 0) return;
+
+  const files = trackedFiles().filter(
+    (rel) =>
+      rel !== "package-lock.json" &&
+      !rel.startsWith(".next/") &&
+      !rel.startsWith("node_modules/") &&
+      !rel.startsWith("test-results/") &&
+      !rel.startsWith("playwright-report/"),
+  );
+  scanBuildFiles(
+    files,
+    sensitiveValues.map((item) => item.value),
+    "tracked file",
+    sensitiveValues,
+  );
 }
 
 function checkPackageSecurityAudit() {
@@ -962,14 +994,34 @@ function loadSensitiveEnvValues() {
     }
   }
 
-  return [
-    "SUPABASE_SERVICE_ROLE_KEY",
-    "RESEND_API_KEY",
-    "R2_ACCESS_KEY_ID",
-    "R2_SECRET_ACCESS_KEY",
-  ]
-    .map((name) => ({ name, value: env[name] ?? "" }))
-    .filter((item) => item.value.length >= 8);
+  return Object.entries(env)
+    .filter(([name]) => isSensitiveEnvName(name))
+    .map(([name, value]) => ({ name, value: value ?? "" }))
+    .filter(
+      (item) =>
+        item.value.length >= 12 &&
+        ![
+          "local-service-key",
+          "local-access-key",
+          "local-secret-key",
+        ].includes(item.value),
+    );
+}
+
+function isSensitiveEnvName(name) {
+  if (name.startsWith("NEXT_PUBLIC_")) return false;
+  return (
+    [
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "RESEND_API_KEY",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+      "DATABASE_URL",
+      "DB_PASSWORD",
+      "SUPABASE_DB_PASSWORD",
+    ].includes(name) ||
+    /(SECRET|TOKEN|PASSWORD|PRIVATE|SERVICE_ROLE|ACCESS_KEY|API_KEY)$/i.test(name)
+  );
 }
 
 const files = [...walk("app"), ...walk("components"), ...walk("lib")];
@@ -998,6 +1050,7 @@ checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkMarkdownUrlPolicy();
 checkEnvFiles();
+checkTrackedSecretValues();
 checkPackageSecurityAudit();
 checkBuildArtifacts();
 
