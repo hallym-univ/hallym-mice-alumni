@@ -28,6 +28,7 @@ yarn-error.log*
 .env
 .env.*
 !.env.example
+docs/FORK_ENV.private.md
 
 # vercel
 .vercel

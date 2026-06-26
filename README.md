@@ -15,6 +15,7 @@
 | [`docs/spec/02-spec.md`](docs/spec/02-spec.md) | 기술 스펙(아키텍처·데이터모델·API·상태머신) |
 | [`docs/spec/03-tasks.md`](docs/spec/03-tasks.md) | 구현 태스크 + 잔여 작업 |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | **왜 이렇게 만들었나 — 핵심 결정 ADR** |
+| [`docs/FORK_ENV.md`](docs/FORK_ENV.md) | 포크 팀원에게 전달할 환경변수 목록·템플릿 |
 | [`docs/hallym-mice-alumni-platform-prd.md`](docs/hallym-mice-alumni-platform-prd.md) | 원본 기획서(v2.4 정본) |
 
 ---
