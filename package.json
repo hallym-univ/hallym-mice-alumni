@@ -15,7 +15,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "security:check": "node scripts/security-check.mjs",
-    "check": "npm run typecheck && npm run lint && npm run security:check && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run security:check && npm run build && npm run security:check"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.0",

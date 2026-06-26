@@ -197,6 +197,82 @@ function checkEnvFiles() {
   }
 }
 
+function checkBuildArtifacts() {
+  const clientDirs = [".next/static"].filter((dir) => existsSync(path.join(root, dir)));
+  const serverDirs = [".next/server"].filter((dir) => existsSync(path.join(root, dir)));
+  if (clientDirs.length === 0 && serverDirs.length === 0) return;
+
+  const sensitiveMarkers = [
+    "service_role",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_ACCESS_KEY_ID",
+    "RESEND_API_KEY",
+  ];
+
+  const sensitiveValues = loadSensitiveEnvValues();
+  const clientFiles = clientDirs.flatMap(walk);
+  scanBuildFiles(clientFiles, sensitiveMarkers, "client build artifact");
+
+  const buildFiles = [...clientFiles, ...serverDirs.flatMap(walk)];
+  scanBuildFiles(
+    buildFiles,
+    sensitiveValues.map((item) => item.value),
+    "build artifact",
+    sensitiveValues,
+  );
+}
+
+function scanBuildFiles(files, needles, label, namedNeedles = []) {
+  if (needles.length === 0) return;
+  for (const rel of files) {
+    const abs = path.join(root, rel);
+    const stat = statSync(abs);
+    if (stat.size > 5 * 1024 * 1024) continue;
+
+    let source;
+    try {
+      source = readFileSync(abs, "utf8");
+    } catch {
+      continue;
+    }
+    for (const needle of needles) {
+      if (source.includes(needle)) {
+        const named = namedNeedles.find((item) => item.value === needle);
+        const display = named ? named.name : needle;
+        addFailure(`${rel}: ${label} contains sensitive marker "${display}"`);
+      }
+    }
+  }
+}
+
+function loadSensitiveEnvValues() {
+  const env = { ...process.env };
+  for (const rel of [".env.local", ".vercel/.env.production.local"]) {
+    const abs = path.join(root, rel);
+    if (!existsSync(abs)) continue;
+    const source = readFileSync(abs, "utf8");
+    for (const line of source.split(/\r?\n/)) {
+      const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (!match) continue;
+      const [, key, rawValue] = match;
+      env[key] = rawValue
+        .replace(/\s+#.*$/, "")
+        .replace(/^["']|["']$/g, "")
+        .trim();
+    }
+  }
+
+  return [
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "RESEND_API_KEY",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+  ]
+    .map((name) => ({ name, value: env[name] ?? "" }))
+    .filter((item) => item.value.length >= 8);
+}
+
 const files = [...walk("app"), ...walk("components"), ...walk("lib")];
 
 checkNoClientSecretImports(files);
@@ -206,6 +282,7 @@ checkSecurityHeaders();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkEnvFiles();
+checkBuildArtifacts();
 
 if (failures.length > 0) {
   console.error("Security check failed:");
