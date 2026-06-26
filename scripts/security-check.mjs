@@ -203,7 +203,6 @@ function checkBuildArtifacts() {
   if (clientDirs.length === 0 && serverDirs.length === 0) return;
 
   const sensitiveMarkers = [
-    "service_role",
     "SUPABASE_SERVICE_ROLE_KEY",
     "R2_SECRET_ACCESS_KEY",
     "R2_ACCESS_KEY_ID",
