@@ -151,6 +151,46 @@ export const uploadContentTypeSchema = z.enum([
 
 export const uploadScopeSchema = z.enum(["album", "cover", "content", "profile"]);
 
+const storageKeyPattern =
+  "[A-Za-z0-9][A-Za-z0-9._-]{0,180}\\.(?:jpg|jpeg|png|webp|gif)";
+
+function storageKeySchema(prefixes: string[], message: string) {
+  const pattern = new RegExp(`^(?:${prefixes.join("|")})/${storageKeyPattern}$`);
+  return z.string().trim().max(500).refine((value) => pattern.test(value), {
+    message,
+  });
+}
+
+function optionalStorageKeySchema(prefixes: string[], message: string) {
+  const keySchema = storageKeySchema(prefixes, message);
+  return z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null))
+    .refine((value) => value === undefined || value === null || keySchema.safeParse(value).success, {
+      message,
+    });
+}
+
+const profilePhotoPathSchema = optionalStorageKeySchema(
+  ["profiles"],
+  "프로필 사진 키가 올바르지 않아요.",
+);
+const albumCoverKeySchema = optionalStorageKeySchema(
+  ["albums/covers", "content/covers"],
+  "앨범 대표 이미지 키가 올바르지 않아요.",
+);
+const albumImageKeySchema = storageKeySchema(
+  ["albums/images"],
+  "앨범 이미지 키가 올바르지 않아요.",
+);
+const contentCoverPathSchema = optionalStorageKeySchema(
+  ["content/covers"],
+  "콘텐츠 이미지 키가 올바르지 않아요.",
+);
+
 /** 앨범 생성/수정 입력. youtube 는 videoId 로 변환되거나 null. */
 export const albumInputSchema = z.object({
   title: z.string().trim().min(1, "제목을 입력해주세요.").max(200),
@@ -167,13 +207,7 @@ export const albumInputSchema = z.object({
     .max(8, "해시태그는 최대 8개까지 등록할 수 있어요.")
     .optional()
     .transform((values) => normalizeHashtags(values)),
-  cover_image_key: z
-    .string()
-    .trim()
-    .max(500)
-    .optional()
-    .nullable()
-    .transform((v) => (v ? v : null)),
+  cover_image_key: albumCoverKeySchema,
   youtube_video_id: youtubeSchema.optional().nullable(),
   consent_confirmed: z.boolean().optional(),
   is_public: z.boolean().optional(),
@@ -181,7 +215,7 @@ export const albumInputSchema = z.object({
 
 /** 앨범 이미지 추가 입력. */
 export const albumImageInputSchema = z.object({
-  image_key: z.string().trim().min(1, "이미지 키가 필요해요.").max(500),
+  image_key: albumImageKeySchema,
   caption: z
     .string()
     .trim()
@@ -321,7 +355,7 @@ export const profileUpdateSchema = z.object({
   coffeechat_status: coffeechatStatusSchema.optional(),
   open_kakao_url: optionalOpenKakao,
   proposal_email_allowed: z.boolean().optional(),
-  photo_path: nullableText,
+  photo_path: profilePhotoPathSchema,
   is_public: z.boolean().optional(),
   field_visibility: fieldVisibilitySchema.optional(),
   tag_ids: z.array(z.string().uuid()).max(20).optional(),
@@ -478,13 +512,7 @@ export const articleInputSchema = z.object({
   title: z.string().trim().min(1, "제목을 입력해주세요.").max(200),
   summary: z.string().trim().min(1, "요약을 입력해주세요.").max(500),
   body: z.string().trim().min(1, "본문을 입력해주세요.").max(20000),
-  cover_path: z
-    .string()
-    .trim()
-    .max(500)
-    .optional()
-    .nullable()
-    .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null)),
+  cover_path: contentCoverPathSchema,
   related_profile_id: z
     .string()
     .uuid()
