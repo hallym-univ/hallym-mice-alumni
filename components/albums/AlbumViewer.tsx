@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { r2PublicUrl } from "@/lib/utils";
 import type { AlbumImageRow, AlbumRow } from "@/types/database";
@@ -72,6 +73,15 @@ export function AlbumViewer({
         ) : null}
         {album.description ? (
           <p className="whitespace-pre-line text-sm">{album.description}</p>
+        ) : null}
+        {(album.hashtags ?? []).length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {(album.hashtags ?? []).map((tag) => (
+              <Badge key={tag} variant="outline">
+                #{tag}
+              </Badge>
+            ))}
+          </div>
         ) : null}
       </header>
 

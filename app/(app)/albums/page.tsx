@@ -3,10 +3,8 @@ import { redirect } from "next/navigation";
 import { requireMember } from "@/lib/guards/requireMember";
 import { AuthError } from "@/lib/guards/withAuth";
 import { listPublicAlbums } from "@/lib/albums/public";
-import { AlbumGrid } from "@/components/albums/AlbumGrid";
-import { EmptyState } from "@/components/common/EmptyState";
+import { AlbumBrowser } from "@/components/albums/AlbumBrowser";
 import { ErrorState } from "@/components/common/ErrorState";
-import { EMPTY } from "@/lib/messages";
 
 /**
  * 회원 갤러리 — 공개 앨범 목록 (§6.5-5 / T-156).
@@ -46,14 +44,7 @@ export default async function MemberAlbumsPage() {
         </p>
       </header>
 
-      {albums.length === 0 ? (
-        <EmptyState
-          title={EMPTY.galleryNoAlbums.title}
-          description={EMPTY.galleryNoAlbums.cta}
-        />
-      ) : (
-        <AlbumGrid albums={albums} />
-      )}
+      <AlbumBrowser albums={albums} />
     </section>
   );
 }

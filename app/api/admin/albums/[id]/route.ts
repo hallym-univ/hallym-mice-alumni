@@ -80,6 +80,7 @@ export const PATCH = withAuth<Params>(
     if (input.title !== undefined) update.title = input.title;
     if (input.event_date !== undefined) update.event_date = input.event_date ?? null;
     if (input.description !== undefined) update.description = input.description ?? null;
+    if (input.hashtags !== undefined) update.hashtags = input.hashtags;
     if (input.cover_image_key !== undefined)
       update.cover_image_key = input.cover_image_key ?? null;
     if (input.youtube_video_id !== undefined)

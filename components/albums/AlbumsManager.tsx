@@ -21,6 +21,7 @@ import {
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingSkeleton } from "@/components/common/LoadingSkeleton";
+import { formatHashtags, parseHashtagsInput } from "@/lib/albums/hashtags";
 import { EMPTY } from "@/lib/messages";
 import type { AlbumRow } from "@/types/database";
 
@@ -80,6 +81,15 @@ export function AlbumsManager() {
                       <p className="text-xs text-muted-foreground">
                         {a.event_date ?? "행사일 미정"}
                       </p>
+                      {(a.hashtags ?? []).length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {(a.hashtags ?? []).slice(0, 4).map((tag) => (
+                            <Badge key={tag} variant="outline">
+                              #{tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {a.consent_confirmed ? null : (
@@ -105,8 +115,10 @@ function CreateAlbumDialog({ onCreated }: { onCreated: () => void }) {
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [description, setDescription] = useState("");
+  const [hashtags, setHashtags] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const parsedHashtags = parseHashtagsInput(hashtags);
 
   async function submit() {
     setSubmitting(true);
@@ -119,6 +131,7 @@ function CreateAlbumDialog({ onCreated }: { onCreated: () => void }) {
           title,
           event_date: eventDate,
           description,
+          hashtags: parsedHashtags,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -129,6 +142,7 @@ function CreateAlbumDialog({ onCreated }: { onCreated: () => void }) {
       setTitle("");
       setEventDate("");
       setDescription("");
+      setHashtags("");
       setOpen(false);
       onCreated();
     } catch {
@@ -174,6 +188,19 @@ function CreateAlbumDialog({ onCreated }: { onCreated: () => void }) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="행사 소개 (선택)"
             />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="album-tags">해시태그</Label>
+            <Input
+              id="album-tags"
+              value={hashtags}
+              onChange={(e) => setHashtags(e.target.value)}
+              placeholder="#동문회 #특강 #AI"
+            />
+            <p className="text-xs text-muted-foreground">
+              최대 8개까지 저장돼요.
+              {parsedHashtags.length > 0 ? ` ${formatHashtags(parsedHashtags)}` : ""}
+            </p>
           </div>
           {error ? (
             <p role="alert" className="text-sm text-destructive">

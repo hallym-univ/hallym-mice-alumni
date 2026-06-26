@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { GradientCover } from "@/components/common/GradientCover";
+import { Badge } from "@/components/ui/badge";
 import { r2PublicUrl } from "@/lib/utils";
 import type { AlbumRow } from "@/types/database";
 
@@ -40,6 +41,15 @@ export function AlbumGrid({ albums }: { albums: AlbumRow[] }) {
                 <p className="text-xs text-muted-foreground">
                   {a.event_date ?? "행사일 미정"}
                 </p>
+                {(a.hashtags ?? []).length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {(a.hashtags ?? []).slice(0, 3).map((tag) => (
+                      <Badge key={tag} variant="outline" className="px-2 py-0 text-[11px]">
+                        #{tag}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           </Link>

@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingSkeleton } from "@/components/common/LoadingSkeleton";
 import { useImageUpload } from "@/components/admin/useImageUpload";
+import { formatHashtags, parseHashtagsInput } from "@/lib/albums/hashtags";
 import { extractYoutubeVideoId } from "@/lib/validators";
 import { cn, r2PublicUrl } from "@/lib/utils";
 import type { AlbumImageRow, AlbumRow } from "@/types/database";
@@ -94,6 +95,7 @@ function AlbumMetaForm({
   const [title, setTitle] = useState(album.title);
   const [eventDate, setEventDate] = useState(album.event_date ?? "");
   const [description, setDescription] = useState(album.description ?? "");
+  const [hashtags, setHashtags] = useState(formatHashtags(album.hashtags));
   const [youtube, setYoutube] = useState(
     album.youtube_video_id ? `https://youtu.be/${album.youtube_video_id}` : "",
   );
@@ -114,6 +116,7 @@ function AlbumMetaForm({
           title,
           event_date: eventDate,
           description,
+          hashtags: parseHashtagsInput(hashtags),
           youtube_video_id: youtube,
         }),
       });
@@ -157,6 +160,18 @@ function AlbumMetaForm({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="hashtags">해시태그</Label>
+          <Input
+            id="hashtags"
+            value={hashtags}
+            onChange={(e) => setHashtags(e.target.value)}
+            placeholder="#동문회 #특강 #AI"
+          />
+          <p className="text-xs text-muted-foreground">
+            제목·설명과 함께 행사기록 검색에 사용돼요. 최대 8개까지 저장돼요.
+          </p>
         </div>
         <div className="space-y-1">
           <Label htmlFor="yt">YouTube 링크</Label>

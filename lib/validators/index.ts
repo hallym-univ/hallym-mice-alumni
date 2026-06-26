@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { normalizeHashtags } from "@/lib/albums/hashtags";
+
 /**
  * 공용 검증 스키마 (zod).
  * 외부 URL은 https만 허용하고, 오픈카톡은 open.kakao.com 화이트리스트,
@@ -158,6 +160,11 @@ export const albumInputSchema = z.object({
     .optional()
     .nullable()
     .transform((v) => (v ? v : null)),
+  hashtags: z
+    .array(z.string().trim().max(24))
+    .max(8, "해시태그는 최대 8개까지 등록할 수 있어요.")
+    .optional()
+    .transform((values) => normalizeHashtags(values)),
   cover_image_key: z
     .string()
     .trim()

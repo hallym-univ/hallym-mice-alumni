@@ -71,6 +71,7 @@ export const POST = withAuth(
         title: input.title,
         event_date: input.event_date ?? null,
         description: input.description ?? null,
+        hashtags: input.hashtags ?? [],
         cover_image_key: input.cover_image_key ?? null,
         youtube_video_id: input.youtube_video_id ?? null,
         consent_confirmed: consentConfirmed,

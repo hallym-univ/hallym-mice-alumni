@@ -170,6 +170,7 @@ export type AlbumRow = {
   title: string;
   event_date: string | null;
   description: string | null;
+  hashtags: string[];
   cover_image_key: string | null;
   youtube_video_id: string | null;
   consent_confirmed: boolean;
@@ -322,7 +323,7 @@ export interface Database {
       events: TableDef<EventRow>;
       event_daily: TableDef<EventDailyRow, "count">;
       notifications: TableDef<NotificationRow>;
-      albums: TableDef<AlbumRow, "consent_confirmed" | "is_public">;
+      albums: TableDef<AlbumRow, "consent_confirmed" | "is_public" | "hashtags">;
       album_images: TableDef<AlbumImageRow, "sort_order">;
       jobs: TableDef<JobRow, "status">;
       job_tags: TableDef<JobTagRow>;
