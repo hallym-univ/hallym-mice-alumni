@@ -34,15 +34,10 @@ import type { AuthProfile } from "@/lib/guards/withAuth";
  */
 export default async function HomePage() {
   const me = await requireMemberPage("/home");
-  const admin = createAdminClient();
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
-    alumniCountRes,
-    coffeechatCountRes,
-    recentProfileRes,
-    jobCountRes,
-    postCountRes,
+    stats,
     directory,
     jobsRes,
     posts,
@@ -50,34 +45,7 @@ export default async function HomePage() {
     albums,
   ] =
     await Promise.all([
-      admin
-        .from("profiles")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "active")
-        .eq("is_public", true)
-        .is("deleted_at", null),
-      admin
-        .from("profiles")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "active")
-        .eq("is_public", true)
-        .in("coffeechat_status", ["open", "monthly"])
-        .is("deleted_at", null),
-      admin
-        .from("profiles")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "active")
-        .eq("is_public", true)
-        .gte("updated_at", since)
-        .is("deleted_at", null),
-      admin
-        .from("jobs")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "published"),
-      admin
-        .from("posts")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "published"),
+      fetchHomeNetworkStats(since),
       listDirectory(me, { limit: 12 }),
       listPublishedJobs(me, { limit: 3 }),
       listPublishedPosts(me, 3).catch(() => []),
@@ -100,30 +68,30 @@ export default async function HomePage() {
         <p className="text-sm text-muted-foreground">이번 주 한림 MICE 네트워크</p>
         <h1 className="text-2xl font-bold tracking-tight">{me.profile.name} 님</h1>
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <Stat href="/alumni" icon={Users} label="가입 동문" value={alumniCountRes.count ?? 0} />
+          <Stat href="/alumni" icon={Users} label="가입 동문" value={stats.alumni_count} />
           <Stat
             href="/alumni"
             icon={MessageCircle}
             label="커피챗 가능"
-            value={coffeechatCountRes.count ?? 0}
+            value={stats.coffeechat_count}
           />
           <Stat
             href="/jobs"
             icon={Briefcase}
             label="진행 중 기회"
-            value={jobCountRes.count ?? latestJobs.length}
+            value={stats.job_count || latestJobs.length}
           />
           <Stat
             href="/connect"
             icon={MessagesSquare}
             label="새 게시글"
-            value={postCountRes.count ?? latestPosts.length}
+            value={stats.post_count || latestPosts.length}
           />
           <Stat
             href="/alumni"
             icon={RefreshCw}
             label="최근 업데이트"
-            value={recentProfileRes.count ?? 0}
+            value={stats.recent_profile_count}
             className="col-span-2"
           />
         </div>
@@ -217,6 +185,38 @@ function Stat({
       </Card>
     </Link>
   );
+}
+
+type HomeNetworkStats = {
+  alumni_count: number;
+  coffeechat_count: number;
+  recent_profile_count: number;
+  job_count: number;
+  post_count: number;
+};
+
+type HomeNetworkStatsRpc = (
+  fn: "get_home_network_stats",
+  args: { since: string },
+) => Promise<{ data: HomeNetworkStats[] | null; error: { message: string } | null }>;
+
+const EMPTY_HOME_STATS: HomeNetworkStats = {
+  alumni_count: 0,
+  coffeechat_count: 0,
+  recent_profile_count: 0,
+  job_count: 0,
+  post_count: 0,
+};
+
+async function fetchHomeNetworkStats(since: string): Promise<HomeNetworkStats> {
+  const admin = createAdminClient();
+  const runStatsRpc = admin.rpc as unknown as HomeNetworkStatsRpc;
+  const { data, error } = await runStatsRpc("get_home_network_stats", { since });
+  if (error) {
+    console.warn("[home] network stats RPC unavailable", error.message);
+    return EMPTY_HOME_STATS;
+  }
+  return data?.[0] ?? EMPTY_HOME_STATS;
 }
 
 function Section({

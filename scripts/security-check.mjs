@@ -1085,6 +1085,47 @@ function checkConnectEngagementAggregation() {
   }
 }
 
+function checkHomeNetworkStatsAggregation() {
+  const migration = read("supabase/migrations/0014_home_network_stats.sql");
+  for (const fragment of [
+    "get_home_network_stats",
+    "returns table",
+    "public_profiles",
+    "status = 'active'",
+    "is_public = true",
+    "deleted_at is null",
+    "coffeechat_status in ('open', 'monthly')",
+    "updated_at >= since",
+    "where status = 'published'",
+    "revoke all on function public.get_home_network_stats(timestamptz) from public",
+    "revoke all on function public.get_home_network_stats(timestamptz) from anon",
+    "revoke all on function public.get_home_network_stats(timestamptz) from authenticated",
+    "grant execute on function public.get_home_network_stats(timestamptz) to service_role",
+  ]) {
+    if (!migration.includes(fragment)) {
+      addFailure(`supabase/migrations/0014_home_network_stats.sql: missing home stats RPC fragment ${fragment}`);
+    }
+  }
+
+  const home = read("app/(app)/home/page.tsx");
+  for (const fragment of [
+    "fetchHomeNetworkStats(since)",
+    "HomeNetworkStatsRpc",
+    '"get_home_network_stats"',
+    "stats.alumni_count",
+    "stats.coffeechat_count",
+    "stats.recent_profile_count",
+  ]) {
+    if (!home.includes(fragment)) {
+      addFailure(`app/(app)/home/page.tsx: missing home network stats fragment ${fragment}`);
+    }
+  }
+
+  if (home.includes('{ count: "exact" }')) {
+    addFailure("app/(app)/home/page.tsx: home dashboard must use get_home_network_stats instead of exact counts");
+  }
+}
+
 function checkMemberListPaginationPolicy() {
   for (const [rel, fragments] of [
     [
@@ -1380,6 +1421,7 @@ checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
 checkConnectCommentPreviewLimit();
 checkConnectEngagementAggregation();
+checkHomeNetworkStatsAggregation();
 checkMemberListPaginationPolicy();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
