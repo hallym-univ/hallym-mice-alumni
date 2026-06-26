@@ -19,8 +19,13 @@ import type { ArticleRow } from "@/types/database";
  * 작성/수정 모두 풀 에디터(/admin/content/new · /admin/content/:id)로 일관 처리한다.
  * 데이터 접근은 /api/admin/content(서버, requireAdmin)로만.
  */
+type AdminArticleListItem = Pick<
+  ArticleRow,
+  "id" | "title" | "status" | "created_at"
+>;
+
 export function ContentManager() {
-  const [articles, setArticles] = useState<ArticleRow[]>([]);
+  const [articles, setArticles] = useState<AdminArticleListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 

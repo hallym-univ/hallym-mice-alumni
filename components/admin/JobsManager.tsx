@@ -25,7 +25,12 @@ import type { JobRow, JobStatus } from "@/types/database";
  * 공고 승인/관리 (§6.4 / §6.7). 상태 큐 + 승인/숨김/마감 전이.
  * 데이터 접근은 /api/admin/jobs(서버, requireAdmin)로만.
  */
-type JobWithAuthor = JobRow & { author_name: string | null };
+type JobWithAuthor = Pick<
+  JobRow,
+  "id" | "title" | "organization" | "job_type" | "status"
+> & {
+  author_name: string | null;
+};
 
 const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "pending", label: "승인 대기" },

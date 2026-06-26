@@ -16,13 +16,28 @@ import type { AlbumRow } from "@/types/database";
  *  - consent_confirmed === false 이면 is_public=true 로 만들 수 없다(게시 동의 게이트).
  *  - 모든 변경은 admin_logs 기록.
  */
+type AdminAlbumListItem = Pick<
+  AlbumRow,
+  | "id"
+  | "title"
+  | "event_date"
+  | "hashtags"
+  | "consent_confirmed"
+  | "is_public"
+  | "created_at"
+>;
+
+type CreatedAlbumSummary = Pick<AlbumRow, "id" | "title" | "is_public">;
+
+const ADMIN_ALBUM_LIST_COLS =
+  "id,title,event_date,hashtags,consent_confirmed,is_public,created_at";
 
 export const GET = withAuth(
   async () => {
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("albums")
-      .select("*")
+      .select(ADMIN_ALBUM_LIST_COLS)
       .order("event_date", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(200);
@@ -30,7 +45,7 @@ export const GET = withAuth(
     if (error) {
       return Response.json({ error: "앨범 목록 조회에 실패했어요." }, { status: 500 });
     }
-    return Response.json({ albums: (data ?? []) as AlbumRow[] });
+    return Response.json({ albums: (data ?? []) as AdminAlbumListItem[] });
   },
   { role: "admin" },
 );
@@ -78,8 +93,8 @@ export const POST = withAuth(
         is_public: wantPublic,
         created_by: me.profile.id,
       })
-      .select("*")
-      .maybeSingle<AlbumRow>();
+      .select("id,title,is_public")
+      .maybeSingle<CreatedAlbumSummary>();
 
     if (error || !data) {
       return Response.json({ error: "앨범 생성에 실패했어요." }, { status: 500 });

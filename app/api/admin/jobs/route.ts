@@ -12,6 +12,14 @@ import type { JobRow } from "@/types/database";
  * PATCH /api/admin/jobs               — 상태 전이(pending→published / →hidden / →closed).
  * 모든 전이는 admin_logs 기록.
  */
+type AdminJobListItem = Pick<
+  JobRow,
+  "id" | "author_id" | "title" | "organization" | "job_type" | "status" | "created_at"
+>;
+
+const ADMIN_JOB_LIST_COLS =
+  "id,author_id,title,organization,job_type,status,created_at";
+
 export const GET = withAuth(
   async (req) => {
     const sp = new URL(req.url).searchParams;
@@ -27,7 +35,7 @@ export const GET = withAuth(
     const admin = createAdminClient();
     let query = admin
       .from("jobs")
-      .select("*")
+      .select(ADMIN_JOB_LIST_COLS)
       .order("created_at", { ascending: false })
       .limit(100);
 
@@ -42,7 +50,7 @@ export const GET = withAuth(
       return Response.json({ error: "공고 목록 조회에 실패했어요." }, { status: 500 });
     }
 
-    const jobs = (data ?? []) as JobRow[];
+    const jobs = (data ?? []) as AdminJobListItem[];
     const authorIds = [
       ...new Set(jobs.map((j) => j.author_id).filter((v): v is string => Boolean(v))),
     ];

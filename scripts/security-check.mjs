@@ -576,6 +576,49 @@ function checkDataMinimization() {
   if (notificationQueries.includes('.select("*")')) {
     addFailure("lib/notifications/queries.ts: notification inbox must not select all columns");
   }
+
+  const adminJobsRoute = read("app/api/admin/jobs/route.ts");
+  for (const fragment of [
+    "ADMIN_JOB_LIST_COLS",
+    ".select(ADMIN_JOB_LIST_COLS)",
+    ".limit(100)",
+  ]) {
+    if (!adminJobsRoute.includes(fragment)) {
+      addFailure(`app/api/admin/jobs/route.ts: missing admin job list column policy fragment ${fragment}`);
+    }
+  }
+  if (adminJobsRoute.includes('.select("*")')) {
+    addFailure("app/api/admin/jobs/route.ts: admin job list must not select all columns");
+  }
+
+  const adminContentRoute = read("app/api/admin/content/route.ts");
+  for (const fragment of [
+    "ADMIN_ARTICLE_LIST_COLS",
+    ".select(ADMIN_ARTICLE_LIST_COLS)",
+    ".limit(200)",
+  ]) {
+    if (!adminContentRoute.includes(fragment)) {
+      addFailure(`app/api/admin/content/route.ts: missing admin content list column policy fragment ${fragment}`);
+    }
+  }
+  if (adminContentRoute.includes('.select("*")')) {
+    addFailure("app/api/admin/content/route.ts: admin content list must not select all columns");
+  }
+
+  const adminAlbumsRoute = read("app/api/admin/albums/route.ts");
+  for (const fragment of [
+    "ADMIN_ALBUM_LIST_COLS",
+    ".select(ADMIN_ALBUM_LIST_COLS)",
+    ".select(\"id,title,is_public\")",
+    ".limit(200)",
+  ]) {
+    if (!adminAlbumsRoute.includes(fragment)) {
+      addFailure(`app/api/admin/albums/route.ts: missing admin album column policy fragment ${fragment}`);
+    }
+  }
+  if (adminAlbumsRoute.includes('.select("*")')) {
+    addFailure("app/api/admin/albums/route.ts: admin album route must not select all columns");
+  }
 }
 
 function checkListQueryParamValidation() {

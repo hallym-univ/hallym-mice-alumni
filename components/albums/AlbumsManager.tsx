@@ -30,8 +30,13 @@ import type { AlbumRow } from "@/types/database";
  * 데이터 접근은 전부 /api/admin/albums(서버, requireAdmin)로만 한다.
  * 상세(이미지/공개/동의) 편집은 /admin/albums/:id 로 이동.
  */
+type AdminAlbumListItem = Pick<
+  AlbumRow,
+  "id" | "title" | "event_date" | "hashtags" | "consent_confirmed" | "is_public"
+>;
+
 export function AlbumsManager() {
-  const [albums, setAlbums] = useState<AlbumRow[]>([]);
+  const [albums, setAlbums] = useState<AdminAlbumListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 

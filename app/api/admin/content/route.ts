@@ -10,18 +10,25 @@ import type { ArticleRow } from "@/types/database";
  * GET  /api/admin/content — 전체 콘텐츠 목록(상태 무관).
  * POST /api/admin/content — 콘텐츠 생성(status=draft, author=본인).
  */
+type AdminArticleListItem = Pick<
+  ArticleRow,
+  "id" | "title" | "status" | "created_at"
+>;
+
+const ADMIN_ARTICLE_LIST_COLS = "id,title,status,created_at";
+
 export const GET = withAuth(
   async () => {
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("articles")
-      .select("*")
+      .select(ADMIN_ARTICLE_LIST_COLS)
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) {
       return Response.json({ error: "콘텐츠 목록 조회에 실패했어요." }, { status: 500 });
     }
-    return Response.json({ articles: (data ?? []) as ArticleRow[] });
+    return Response.json({ articles: (data ?? []) as AdminArticleListItem[] });
   },
   { role: "admin" },
 );
