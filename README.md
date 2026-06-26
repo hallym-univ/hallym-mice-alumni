@@ -73,7 +73,9 @@ npm run dev                  # http://localhost:3000
 # 품질 게이트
 npm run typecheck            # tsc --noEmit
 npm run lint                 # ESLint (components→admin/storage import 차단 포함)
+npm run security:check       # withAuth/route id/server-only/env/외부링크 보안 회귀 체크
 npm run build                # 프로덕션 빌드
+npm run check                # 위 게이트를 한 번에 실행
 ```
 
 > 로그인 뒤 화면(홈/동문)을 보려면 Supabase·Google OAuth 연결이 필요하다. 빠른 미리보기는 더미 `.env.local`로 공개 페이지(랜딩/로그인)만 확인 가능.

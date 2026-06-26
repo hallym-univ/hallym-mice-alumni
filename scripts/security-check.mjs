@@ -1,0 +1,216 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const failures = [];
+
+function read(relPath) {
+  return readFileSync(path.join(root, relPath), "utf8");
+}
+
+function walk(relDir) {
+  const absDir = path.join(root, relDir);
+  if (!existsSync(absDir)) return [];
+  const out = [];
+  for (const entry of readdirSync(absDir)) {
+    if (entry === "node_modules" || entry === ".next" || entry === ".git") continue;
+    const rel = path.join(relDir, entry);
+    const abs = path.join(root, rel);
+    const stat = statSync(abs);
+    if (stat.isDirectory()) out.push(...walk(rel));
+    else out.push(rel.split(path.sep).join("/"));
+  }
+  return out;
+}
+
+function addFailure(message) {
+  failures.push(message);
+}
+
+function importsOf(source) {
+  const imports = [];
+  const importRe =
+    /import\s+(?:type\s+)?(?:[^'"()]*?\s+from\s+)?["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)/g;
+  let match;
+  while ((match = importRe.exec(source))) imports.push(match[1] ?? match[2]);
+  return imports;
+}
+
+function isUseClientFile(source) {
+  const stripped = source
+    .replace(/^\uFEFF/, "")
+    .replace(/^\s*\/\*[\s\S]*?\*\//, "")
+    .replace(/^\s*\/\/.*$/gm, "")
+    .trimStart();
+  return stripped.startsWith('"use client"') || stripped.startsWith("'use client'");
+}
+
+function resolveImport(relFile, specifier) {
+  if (specifier === "server-only") return "server-only";
+  if (specifier.startsWith("@/")) return path.join(root, specifier.slice(2));
+  if (specifier.startsWith(".")) {
+    return path.resolve(path.join(root, path.dirname(relFile)), specifier);
+  }
+  return null;
+}
+
+function pointsAt(absTarget, relSensitive) {
+  if (!absTarget) return false;
+  const sensitive = path.join(root, relSensitive);
+  return absTarget === sensitive || absTarget.startsWith(`${sensitive}${path.sep}`);
+}
+
+function checkNoClientSecretImports(files) {
+  const sensitive = [
+    "lib/supabase/admin",
+    "lib/storage",
+    "lib/server-env",
+    "lib/rate-limit",
+  ];
+
+  for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
+    const source = read(rel);
+    if (!isUseClientFile(source)) continue;
+
+    for (const specifier of importsOf(source)) {
+      const resolved = resolveImport(rel, specifier);
+      if (specifier === "server-only") {
+        addFailure(`${rel}: client file imports server-only`);
+        continue;
+      }
+      if (sensitive.some((item) => pointsAt(resolved, item))) {
+        addFailure(`${rel}: client file imports server-only module "${specifier}"`);
+      }
+    }
+  }
+}
+
+function checkSensitiveLibsAreServerOnly(files) {
+  const sensitiveImportRe =
+    /@\/lib\/supabase\/admin|@\/lib\/storage|@\/lib\/server-env/;
+  for (const rel of files.filter((f) => f.startsWith("lib/") && /\.(ts|tsx)$/.test(f))) {
+    const source = read(rel);
+    const isSensitiveEntrypoint =
+      rel === "lib/supabase/admin.ts" ||
+      rel === "lib/storage/index.ts" ||
+      rel === "lib/server-env.ts";
+    if ((isSensitiveEntrypoint || sensitiveImportRe.test(source)) && !source.includes('import "server-only"')) {
+      addFailure(`${rel}: sensitive server module must import "server-only"`);
+    }
+  }
+}
+
+function checkApiRoutes() {
+  const apiRoutes = walk("app/api").filter((f) => f.endsWith("/route.ts"));
+  const publicUnauthedGet = new Set(["app/api/health/route.ts"]);
+
+  for (const rel of apiRoutes) {
+    const source = read(rel);
+    const hasMutation = /export\s+const\s+(POST|PUT|PATCH|DELETE)\s*=/.test(source);
+    const usesAdminClient = source.includes("createAdminClient(");
+    const usesWithAuth = /withAuth(?:<[^>]+>)?\(/.test(source);
+
+    if (hasMutation && !usesWithAuth) {
+      addFailure(`${rel}: mutating API route must use withAuth`);
+    }
+    if (usesAdminClient && !usesWithAuth && !publicUnauthedGet.has(rel)) {
+      addFailure(`${rel}: admin client access must be behind withAuth`);
+    }
+    if (rel.includes("[") && !source.includes("resolveRouteUuidParam(")) {
+      addFailure(`${rel}: dynamic API route id must be validated with resolveRouteUuidParam`);
+    }
+  }
+}
+
+function checkSecurityHeaders() {
+  const source = read("next.config.mjs");
+  for (const header of [
+    "X-Content-Type-Options",
+    "X-Frame-Options",
+    "Referrer-Policy",
+    "Permissions-Policy",
+    "Strict-Transport-Security",
+  ]) {
+    if (!source.includes(header)) addFailure(`next.config.mjs: missing ${header}`);
+  }
+}
+
+function checkExternalLinks(files) {
+  for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
+    const source = read(rel);
+    const targetBlankRe = /target=["']_blank["']/g;
+    let match;
+    while ((match = targetBlankRe.exec(source))) {
+      const tagStart = source.lastIndexOf("<", match.index);
+      const tagEnd = source.indexOf(">", match.index);
+      const chunk =
+        tagStart >= 0 && tagEnd >= 0
+          ? source.slice(tagStart, tagEnd + 1)
+          : source.slice(match.index, match.index + 250);
+      if (!/rel=["'][^"']*noopener/.test(chunk)) {
+        addFailure(`${rel}: target="_blank" must include rel="noopener noreferrer"`);
+      }
+    }
+
+    const windowOpenRe = /window\.open\(([^)]*)\)/g;
+    while ((match = windowOpenRe.exec(source))) {
+      if (!match[1].includes("noopener")) {
+        addFailure(`${rel}: window.open must include noopener in features`);
+      }
+    }
+  }
+}
+
+function checkNoDangerousHtml(files) {
+  for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
+    const source = read(rel);
+    if (source.includes("dangerouslySetInnerHTML")) {
+      addFailure(`${rel}: dangerouslySetInnerHTML requires an explicit security review`);
+    }
+  }
+}
+
+function checkEnvFiles() {
+  const trackedEnv = execFileSync("git", ["ls-files", ".env", ".env.local", ".vercel"], {
+    cwd: root,
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter(Boolean);
+  if (trackedEnv.length > 0) {
+    addFailure(`secret env files are tracked by git: ${trackedEnv.join(", ")}`);
+  }
+
+  const example = read(".env.example");
+  for (const name of [
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "RESEND_API_KEY",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+  ]) {
+    const match = example.match(new RegExp(`^${name}=([^#\\n]*)`, "m"));
+    if (match?.[1]?.trim()) {
+      addFailure(`.env.example: ${name} must not contain a real value`);
+    }
+  }
+}
+
+const files = [...walk("app"), ...walk("components"), ...walk("lib")];
+
+checkNoClientSecretImports(files);
+checkSensitiveLibsAreServerOnly(files);
+checkApiRoutes();
+checkSecurityHeaders();
+checkExternalLinks(files);
+checkNoDangerousHtml(files);
+checkEnvFiles();
+
+if (failures.length > 0) {
+  console.error("Security check failed:");
+  for (const failure of failures) console.error(`- ${failure}`);
+  process.exit(1);
+}
+
+console.log("Security check passed.");
