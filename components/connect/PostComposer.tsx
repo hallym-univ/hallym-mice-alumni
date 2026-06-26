@@ -14,7 +14,10 @@ import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,62 +114,52 @@ export function PostComposer({
         maxLength={3000}
       />
 
-      {selectedAttachment ? (
-        <AttachedContentCard
-          item={selectedAttachment}
-          compact
-          className="border-dashed bg-muted/20"
-          action={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setSelectedContentId("none")}
-              aria-label="첨부 제거"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          }
-        />
-      ) : null}
-
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <Select value={postType} onValueChange={(v) => setPostType(v as PostType)}>
-            <SelectTrigger className="h-8 w-[108px] text-xs">
-              <span className="truncate">{postTypeLabel}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {POST_TYPE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedContentId} onValueChange={applyInternalContent}>
-            <SelectTrigger className="h-8 w-auto max-w-[180px] gap-1.5 px-2.5 text-xs text-muted-foreground">
-              <Paperclip className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">
-                {selectedContent ? "변경" : "콘텐츠"}
-              </span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">첨부 안 함</SelectItem>
-              {importableItems.length > 0 ? (
-                importableItems.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.label}
+          {selectedContent ? (
+            <span className="rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
+              {postTypeLabel}
+            </span>
+          ) : (
+            <Select value={postType} onValueChange={(v) => setPostType(v as PostType)}>
+              <SelectTrigger className="h-8 w-[108px] text-xs">
+                <span className="truncate">{postTypeLabel}</span>
+              </SelectTrigger>
+              <SelectContent>
+                {POST_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="empty" disabled>
-                  가져올 콘텐츠가 없어요
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {importableItems.length > 0 ? (
+            <Select value={selectedContentId} onValueChange={applyInternalContent}>
+              <SelectTrigger className="h-8 w-auto max-w-[190px] gap-1.5 border-transparent bg-transparent px-2.5 text-xs text-muted-foreground shadow-none hover:bg-muted focus:ring-1 focus:ring-ring focus:ring-offset-0">
+                <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">
+                  {selectedContent ? "첨부 변경" : "관련 콘텐츠 첨부"}
+                </span>
+              </SelectTrigger>
+              <SelectContent className="w-[calc(100vw-2rem)] max-w-[360px]">
+                <SelectItem value="none">첨부 없이 작성</SelectItem>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel className="text-xs text-muted-foreground">
+                    플랫폼 콘텐츠
+                  </SelectLabel>
+                  {importableItems.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      <span className="line-clamp-1">
+                        {item.kindLabel} · {item.title}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          ) : null}
         </div>
         <Button
           className="ml-auto"
@@ -177,6 +170,26 @@ export function PostComposer({
           {busy ? "등록 중" : "등록"}
         </Button>
       </div>
+
+      {selectedAttachment ? (
+        <AttachedContentCard
+          item={selectedAttachment}
+          compact
+          className="border-dashed bg-muted/15"
+          action={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setSelectedContentId("none")}
+              aria-label="첨부 제거"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          }
+        />
+      ) : null}
 
       {error ? (
         <Alert variant="destructive">

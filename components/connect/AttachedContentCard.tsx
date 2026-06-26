@@ -10,8 +10,6 @@ import {
   Link2,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export interface AttachedContentPreview {
@@ -36,38 +34,32 @@ export function AttachedContentCard({
   const Icon = getAttachmentIcon(item.href);
   const description = item.description?.trim();
   const content = (
-    <Card
+    <div
       className={cn(
-        "flex items-center transition-colors",
-        compact ? "gap-2.5 rounded-md p-2 shadow-none" : "gap-3 p-3",
-        isInternal ? "hover:bg-accent/40" : "hover:bg-accent/30",
+        "flex min-w-0 items-center rounded-md border bg-background/70 transition-colors",
+        compact ? "gap-2.5 p-2" : "gap-3 p-3",
+        isInternal ? "hover:bg-accent/25" : "hover:bg-accent/20",
         className,
       )}
     >
       <span
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
-          compact ? "h-8 w-8" : "h-10 w-10",
+          "flex shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground",
+          compact ? "h-7 w-7" : "h-10 w-10",
         )}
       >
         <Icon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
       </span>
       <div className="min-w-0 flex-1">
-        {compact ? (
-          <p className="text-[11px] text-muted-foreground">{item.kindLabel}</p>
-        ) : (
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span>첨부</span>
-            <span aria-hidden="true">·</span>
-            <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
-              {item.kindLabel}
-            </Badge>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+          <span>관련 콘텐츠</span>
+          <span aria-hidden="true">·</span>
+          <span>{item.kindLabel}</span>
+        </div>
         <p
           className={cn(
-            "line-clamp-1 font-medium leading-snug",
-            compact ? "mt-0.5 text-xs" : "mt-1 text-sm",
+            "line-clamp-1 leading-snug",
+            compact ? "mt-0.5 text-xs font-medium" : "mt-1 text-sm font-semibold",
           )}
         >
           {item.title}
@@ -83,7 +75,7 @@ export function AttachedContentCard({
       ) : isInternal ? null : (
         <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       )}
-    </Card>
+    </div>
   );
 
   if (action) return content;
