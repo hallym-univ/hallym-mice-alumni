@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { recordAdminLog } from "@/lib/admin/log";
 import { withAuth } from "@/lib/guards/withAuth";
 import { deleteObject } from "@/lib/storage";
+import { resolveRouteUuidParam } from "@/lib/validators";
 import type { AlbumImageRow } from "@/types/database";
 
 /**
@@ -15,8 +16,7 @@ type Params = { imageId: string };
 
 export const DELETE = withAuth<Params>(
   async (_req, { me, params }) => {
-    const resolved = params ? await params : null;
-    const imageId = resolved?.imageId;
+    const imageId = await resolveRouteUuidParam(params, "imageId");
     if (!imageId) {
       return Response.json({ error: "잘못된 경로예요." }, { status: 400 });
     }

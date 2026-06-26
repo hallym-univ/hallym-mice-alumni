@@ -1,11 +1,14 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveRouteUuidParam } from "@/lib/validators";
 
 type Params = { id: string };
 
 export const POST = withAuth<Params>(
   async (_req, { me, params }) => {
-    const { id } = await params;
+    const id = await resolveRouteUuidParam(params, "id");
+    if (!id) return Response.json({ error: "잘못된 경로예요." }, { status: 400 });
+
     const admin = createAdminClient();
 
     const { data: post } = await admin
@@ -35,7 +38,9 @@ export const POST = withAuth<Params>(
 
 export const DELETE = withAuth<Params>(
   async (_req, { me, params }) => {
-    const { id } = await params;
+    const id = await resolveRouteUuidParam(params, "id");
+    if (!id) return Response.json({ error: "잘못된 경로예요." }, { status: 400 });
+
     const admin = createAdminClient();
     const { error } = await admin
       .from("post_likes")

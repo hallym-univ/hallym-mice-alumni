@@ -1,5 +1,6 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { getProfileDetail } from "@/lib/profile/queries";
+import { resolveRouteUuidParam } from "@/lib/validators";
 
 /**
  * GET /api/profiles/[id] — 프로필 상세 (§6.2 / T-203).
@@ -9,7 +10,7 @@ import { getProfileDetail } from "@/lib/profile/queries";
  */
 export const GET = withAuth<{ id: string }>(
   async (_req, { me, params }) => {
-    const id = (await params)?.id;
+    const id = await resolveRouteUuidParam(params, "id");
     if (!id) {
       return Response.json({ error: "잘못된 요청이에요." }, { status: 400 });
     }

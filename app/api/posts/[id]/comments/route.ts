@@ -1,13 +1,15 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { listComments } from "@/lib/connect/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { commentInputSchema } from "@/lib/validators";
+import { commentInputSchema, resolveRouteUuidParam } from "@/lib/validators";
 
 type Params = { id: string };
 
 export const GET = withAuth<Params>(
   async (_req, { params }) => {
-    const { id } = await params;
+    const id = await resolveRouteUuidParam(params, "id");
+    if (!id) return Response.json({ error: "잘못된 경로예요." }, { status: 400 });
+
     try {
       const items = await listComments(id);
       return Response.json({ items });
@@ -21,7 +23,9 @@ export const GET = withAuth<Params>(
 
 export const POST = withAuth<Params>(
   async (req, { me, params }) => {
-    const { id } = await params;
+    const id = await resolveRouteUuidParam(params, "id");
+    if (!id) return Response.json({ error: "잘못된 경로예요." }, { status: 400 });
+
     let body: unknown;
     try {
       body = await req.json();

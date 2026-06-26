@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/guards/withAuth";
 import {
   albumImageInputSchema,
   albumImagesReorderSchema,
+  resolveRouteUuidParam,
 } from "@/lib/validators";
 import type { AlbumImageRow } from "@/types/database";
 
@@ -20,8 +21,7 @@ type Params = { id: string };
 
 export const POST = withAuth<Params>(
   async (req, { me, params }) => {
-    const resolved = params ? await params : null;
-    const albumId = resolved?.id;
+    const albumId = await resolveRouteUuidParam(params, "id");
     if (!albumId) {
       return Response.json({ error: "잘못된 경로예요." }, { status: 400 });
     }
@@ -95,8 +95,7 @@ export const POST = withAuth<Params>(
 
 export const PATCH = withAuth<Params>(
   async (req, { me, params }) => {
-    const resolved = params ? await params : null;
-    const albumId = resolved?.id;
+    const albumId = await resolveRouteUuidParam(params, "id");
     if (!albumId) {
       return Response.json({ error: "잘못된 경로예요." }, { status: 400 });
     }

@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { recordAdminLog } from "@/lib/admin/log";
 import { withAuth } from "@/lib/guards/withAuth";
 import { deleteObject } from "@/lib/storage";
-import { albumInputSchema } from "@/lib/validators";
+import { albumInputSchema, resolveRouteUuidParam } from "@/lib/validators";
 import type { AlbumImageRow, AlbumRow } from "@/types/database";
 
 /**
@@ -178,7 +178,5 @@ export const DELETE = withAuth<Params>(
 async function resolveId(
   params: Promise<Params> | undefined,
 ): Promise<string | null> {
-  if (!params) return null;
-  const resolved = await params;
-  return resolved?.id ?? null;
+  return resolveRouteUuidParam(params, "id");
 }

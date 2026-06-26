@@ -131,6 +131,18 @@ export const profileRoleSchema = z.enum([
   "admin",
 ]);
 
+const routeUuidSchema = z.string().uuid("잘못된 경로예요.");
+
+export async function resolveRouteUuidParam<K extends string>(
+  params: Promise<Record<K, string | undefined>> | undefined,
+  key: K,
+): Promise<string | null> {
+  if (!params) return null;
+  const value = (await params)?.[key];
+  const parsed = routeUuidSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
 /** YYYY-MM-DD 형식 날짜(행사일). 빈 값 → null. */
 export const eventDateSchema = z
   .string()

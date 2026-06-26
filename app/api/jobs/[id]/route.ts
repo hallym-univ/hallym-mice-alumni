@@ -1,7 +1,7 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { getAuthorEditedJobStatus } from "@/lib/jobs/policy";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { jobInputSchema } from "@/lib/validators";
+import { jobInputSchema, resolveRouteUuidParam } from "@/lib/validators";
 import type { JobRow } from "@/types/database";
 
 /**
@@ -133,7 +133,5 @@ export const DELETE = withAuth<Params>(
 async function resolveId(
   params: Promise<Params> | undefined,
 ): Promise<string | null> {
-  if (!params) return null;
-  const resolved = await params;
-  return resolved?.id ?? null;
+  return resolveRouteUuidParam(params, "id");
 }

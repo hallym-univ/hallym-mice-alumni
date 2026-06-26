@@ -1,6 +1,7 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { makeCohortHash, recordEvent } from "@/lib/analytics/events";
+import { resolveRouteUuidParam } from "@/lib/validators";
 
 /**
  * POST   /api/jobs/:id/bookmark — 관심 공고 저장 (§6.4). blocks 라우트와 동일 패턴.
@@ -71,7 +72,5 @@ export const DELETE = withAuth<Params>(
 async function resolveId(
   params: Promise<Params> | undefined,
 ): Promise<string | null> {
-  if (!params) return null;
-  const resolved = await params;
-  return resolved?.id ?? null;
+  return resolveRouteUuidParam(params, "id");
 }
