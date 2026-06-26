@@ -843,6 +843,82 @@ function checkDataMinimization() {
   }
 }
 
+function checkWithdrawalAnonymizationPolicy() {
+  const helper = read("lib/profile/withdraw.ts");
+  for (const fragment of [
+    'import "server-only"',
+    "anonymizeProfileForWithdrawal",
+    'name: "탈퇴한 회원"',
+    "student_number: null",
+    "open_kakao_url: null",
+    "proposal_email_allowed: false",
+    "photo_path: null",
+    'coffeechat_status: "private"',
+    "is_public: false",
+    'status: "withdrawn"',
+    "anonymized_at: now",
+    "deleted_at: now",
+    "admin.from(\"profile_tags\").delete().eq(\"profile_id\", profileId)",
+    "blocked_profile_id.eq.${profileId}",
+    "admin.from(\"consents\").delete().eq(\"profile_id\", profileId)",
+    "admin.from(\"admins\").delete().eq(\"profile_id\", profileId)",
+    "admin.from(\"notifications\").delete().eq(\"profile_id\", profileId)",
+    "deleteObject(photoPath)",
+  ]) {
+    if (!helper.includes(fragment)) {
+      addFailure(`lib/profile/withdraw.ts: missing withdrawal anonymization fragment ${fragment}`);
+    }
+  }
+
+  const accountRoute = read("app/api/account/route.ts");
+  for (const fragment of [
+    "anonymizeProfileForWithdrawal(admin, me.profile.id",
+    "photoPath: me.profile.photo_path",
+  ]) {
+    if (!accountRoute.includes(fragment)) {
+      addFailure(`app/api/account/route.ts: account withdrawal must use shared anonymization fragment ${fragment}`);
+    }
+  }
+
+  const adminMembersRoute = read("app/api/admin/members/route.ts");
+  for (const fragment of [
+    'status === "withdrawn"',
+    'existing.status === "withdrawn"',
+    "탈퇴 처리된 회원은 다시 변경할 수 없어요.",
+    "anonymizeProfileForWithdrawal(admin, profileId",
+    "photoPath: existing.photo_path",
+    'action: "member_withdraw"',
+  ]) {
+    if (!adminMembersRoute.includes(fragment)) {
+      addFailure(`app/api/admin/members/route.ts: admin withdrawal must use shared anonymization fragment ${fragment}`);
+    }
+  }
+
+  const migration = read("supabase/migrations/0013_withdrawn_profile_privacy_cleanup.sql");
+  for (const fragment of [
+    "where status = 'withdrawn'",
+    "delete from profile_tags",
+    "delete from blocks",
+    "delete from consents",
+    "delete from admins",
+    "delete from notifications",
+    "name = '탈퇴한 회원'",
+    "student_number = null",
+    "open_kakao_url = null",
+    "proposal_email_allowed = false",
+    "photo_path = null",
+    "coffeechat_status = 'private'",
+    "is_public = false",
+    "deleted_at = coalesce(deleted_at, now())",
+    "anonymized_at = coalesce(anonymized_at, now())",
+    "field_visibility = '{}'::jsonb",
+  ]) {
+    if (!migration.includes(fragment)) {
+      addFailure(`supabase/migrations/0013_withdrawn_profile_privacy_cleanup.sql: missing withdrawn cleanup fragment ${fragment}`);
+    }
+  }
+}
+
 function checkListQueryParamValidation() {
   const validators = read("lib/validators/index.ts");
   for (const fragment of [
@@ -1297,6 +1373,7 @@ checkEventRetentionRollup();
 checkPostgrestSearchSanitization();
 checkUserExternalUrlPolicy();
 checkDataMinimization();
+checkWithdrawalAnonymizationPolicy();
 checkListQueryParamValidation();
 checkAdminQueryParamValidation();
 checkClientWritableEventTypes();

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recordAdminLog } from "@/lib/admin/log";
 import { withAuth } from "@/lib/guards/withAuth";
+import { anonymizeProfileForWithdrawal } from "@/lib/profile/withdraw";
 import { toSafeIlikePattern } from "@/lib/search";
 import { adminMemberListQuerySchema, adminMemberPatchSchema } from "@/lib/validators";
 import type { ProfileRow } from "@/types/database";
@@ -139,6 +140,52 @@ export const PATCH = withAuth(
     }
 
     const admin = createAdminClient();
+    const { data: existing, error: existingError } = await admin
+      .from("profiles")
+      .select("id,status,photo_path")
+      .eq("id", profileId)
+      .maybeSingle<Pick<ProfileRow, "id" | "status" | "photo_path">>();
+
+    if (existingError || !existing) {
+      return Response.json({ error: "회원을 찾을 수 없어요." }, { status: 404 });
+    }
+
+    if (existing.status === "withdrawn") {
+      return Response.json(
+        { error: "탈퇴 처리된 회원은 다시 변경할 수 없어요." },
+        { status: 400 },
+      );
+    }
+
+    if (status === "withdrawn") {
+      if (role !== undefined || isVerified !== undefined) {
+        return Response.json(
+          { error: "탈퇴 처리는 다른 회원 정보 변경과 함께 실행할 수 없어요." },
+          { status: 400 },
+        );
+      }
+
+      let member: Awaited<ReturnType<typeof anonymizeProfileForWithdrawal>>;
+      try {
+        member = await anonymizeProfileForWithdrawal(admin, profileId, {
+          photoPath: existing.photo_path,
+        });
+      } catch (error) {
+        console.error("[admin members withdraw]", error);
+        return Response.json({ error: "회원 탈퇴 처리에 실패했어요." }, { status: 500 });
+      }
+
+      await recordAdminLog({
+        adminProfileId: me.profile.id,
+        action: "member_withdraw",
+        targetType: "profile",
+        targetId: profileId,
+        detail: { status: "withdrawn" },
+      });
+
+      return Response.json({ member });
+    }
+
     const { data, error } = await admin
       .from("profiles")
       .update(update)
