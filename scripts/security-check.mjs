@@ -262,6 +262,7 @@ function checkHighRiskMutationRateLimits() {
     ["app/api/posts/route.ts", ["checkDailyLimit", "post_create"]],
     ["app/api/posts/[id]/comments/route.ts", ["checkDailyLimit", "comment_create"]],
     ["app/api/jobs/route.ts", ["checkDailyLimit", "JOB_CREATE_DAILY_LIMIT", "job_create"]],
+    ["app/api/jobs/[id]/bookmark/route.ts", ["checkDailyLimit", "JOB_BOOKMARK_DAILY_LIMIT", "job_bookmark"]],
     ["app/api/uploads/route.ts", ["checkDailyLimit", "profile_upload_url_request", "asset_upload_url_request"]],
     ["app/api/uploads/from-url/route.ts", ["checkDailyLimit", "remote_image_import"]],
     ["app/api/proposal/route.ts", ["checkDailyLimit", "proposal_email_click"]],
