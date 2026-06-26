@@ -74,12 +74,14 @@ npm run dev                  # http://localhost:3000
 npm run typecheck            # tsc --noEmit
 npm run lint                 # ESLint (components→admin/storage import 차단 포함)
 npm run security:check       # withAuth/route id/server-only/env/외부링크 보안 회귀 체크
+npm run security:audit       # 운영 의존성 취약점 감사(moderate 이상)
+npm run security:audit:all   # dev 포함 전체 의존성 감사(수동 점검용)
 npm run build                # 프로덕션 빌드
 npm run test:e2e             # Playwright 공개/인증/보안 헤더 스모크
-npm run check                # type/lint/security/build/security/e2e 전체 실행
+npm run check                # type/lint/security/audit/build/security/e2e 전체 실행
 ```
 
-GitHub Actions(`.github/workflows/production-safety.yml`)도 PR/push마다 `npm run check`를 실행한다. CI에는 더미 env만 넣어 실제 운영 시크릿 없이 타입·보안 규칙·빌드·번들 시크릿 문자열·Playwright E2E 스모크를 통과해야 한다.
+GitHub Actions(`.github/workflows/production-safety.yml`)도 PR/push마다 `npm run check`를 실행한다. CI에는 더미 env만 넣어 실제 운영 시크릿 없이 타입·보안 규칙·운영 의존성 audit·빌드·번들 시크릿 문자열·Playwright E2E 스모크를 통과해야 한다.
 
 > 로그인 뒤 화면(홈/동문)을 보려면 Supabase·Google OAuth 연결이 필요하다. 빠른 미리보기는 더미 `.env.local`로 공개 페이지(랜딩/로그인)만 확인 가능.
 
@@ -179,6 +181,7 @@ supabase/migrations/*.sql · seed.sql      middleware.ts      docs/
 curl -s "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/profiles" -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" | head
 # 클라이언트 번들 시크릿 마커 + 실제 시크릿 값 유입 확인
 npm run security:check
+npm run security:audit
 ```
 
 ---

@@ -878,6 +878,20 @@ function checkEnvFiles() {
   }
 }
 
+function checkPackageSecurityAudit() {
+  const pkg = JSON.parse(read("package.json"));
+  const scripts = pkg.scripts ?? {};
+  if (scripts["security:audit"] !== "npm audit --omit=dev --audit-level=moderate") {
+    addFailure("package.json: security:audit must audit production dependencies at moderate+ severity");
+  }
+  if (scripts["security:audit:all"] !== "npm audit --audit-level=moderate") {
+    addFailure("package.json: security:audit:all must audit all dependencies at moderate+ severity");
+  }
+  if (!scripts.check?.includes("npm run security:audit")) {
+    addFailure("package.json: npm run check must include security:audit");
+  }
+}
+
 function checkBuildArtifacts() {
   const clientDirs = [".next/static"].filter((dir) => existsSync(path.join(root, dir)));
   const serverDirs = [".next/server"].filter((dir) => existsSync(path.join(root, dir)));
@@ -979,6 +993,7 @@ checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkMarkdownUrlPolicy();
 checkEnvFiles();
+checkPackageSecurityAudit();
 checkBuildArtifacts();
 
 if (failures.length > 0) {

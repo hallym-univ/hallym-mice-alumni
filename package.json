@@ -16,8 +16,10 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "security:check": "node scripts/security-check.mjs",
+    "security:audit": "npm audit --omit=dev --audit-level=moderate",
+    "security:audit:all": "npm audit --audit-level=moderate",
     "events:rollup": "node scripts/rollup-events.mjs",
-    "check": "npm run typecheck && npm run lint && npm run security:check && npm run build && npm run security:check && npm run test:e2e"
+    "check": "npm run typecheck && npm run lint && npm run security:check && npm run security:audit && npm run build && npm run security:check && npm run test:e2e"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.0",
