@@ -479,6 +479,26 @@ function checkDataMinimization() {
       addFailure(`lib/jobs/queries.ts: missing job detail column policy fragment ${fragment}`);
     }
   }
+
+  const profileQueries = read("lib/profile/queries.ts");
+  for (const fragment of [
+    "const PROFILE_DETAIL_COLS",
+    ".select(PROFILE_DETAIL_COLS)",
+    "PublicProfileSource",
+  ]) {
+    if (!profileQueries.includes(fragment)) {
+      addFailure(`lib/profile/queries.ts: missing profile detail column policy fragment ${fragment}`);
+    }
+  }
+  const detailBlockStart = profileQueries.indexOf("export async function getProfileDetail");
+  const detailBlockEnd = profileQueries.indexOf("/** profile_tags", detailBlockStart);
+  const detailBlock =
+    detailBlockStart >= 0 && detailBlockEnd > detailBlockStart
+      ? profileQueries.slice(detailBlockStart, detailBlockEnd)
+      : "";
+  if (detailBlock.includes('.select("*")')) {
+    addFailure("lib/profile/queries.ts: profile detail must not select all columns");
+  }
 }
 
 function checkListQueryParamValidation() {

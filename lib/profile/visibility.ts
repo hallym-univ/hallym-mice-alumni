@@ -48,6 +48,31 @@ export interface PublicProfileCard {
   updated_at: string;
 }
 
+export type PublicProfileSource = Pick<
+  ProfileRow,
+  | "id"
+  | "name"
+  | "role"
+  | "status"
+  | "is_verified"
+  | "admission_year"
+  | "graduation_year"
+  | "department"
+  | "organization"
+  | "employment_status"
+  | "position"
+  | "bio"
+  | "career_summary"
+  | "coffeechat_status"
+  | "open_kakao_url"
+  | "proposal_email_allowed"
+  | "photo_path"
+  | "is_public"
+  | "field_visibility"
+  | "deleted_at"
+  | "updated_at"
+>;
+
 /** 프로필 상세(상세 화면 전용). 오픈카톡은 정책 통과 시에만 채워진다. */
 export interface PublicProfileDetail extends PublicProfileCard {
   bio: string | null;
@@ -71,7 +96,7 @@ export interface SerializeContext {
 }
 
 /** 졸업연도 → 기수. 명부 규칙 미확정이라 졸업연도를 그대로 기수 후보로 노출한다. */
-function resolveCohort(profile: ProfileRow, hidden: boolean): number | null {
+function resolveCohort(profile: PublicProfileSource, hidden: boolean): number | null {
   if (hidden) return null;
   return profile.graduation_year ?? null;
 }
@@ -83,7 +108,7 @@ function field<T>(value: T, hidden: boolean, isSelf: boolean): T | null {
 
 /** 디렉토리 카드용 직렬화(오픈카톡/학번/이메일/소개 제외). */
 export function toProfileCard(
-  profile: ProfileRow,
+  profile: PublicProfileSource,
   tags: TagRow[],
   ctx: Pick<SerializeContext, "isSelf" | "toPhotoUrl">,
 ): PublicProfileCard {
@@ -115,7 +140,7 @@ export function toProfileCard(
  * 오픈카톡은 (본인 공개 || 본인 || 관리자) && 비파트너(뷰어) 조건을 모두 통과할 때만 노출.
  */
 export function toProfileDetail(
-  profile: ProfileRow,
+  profile: PublicProfileSource,
   tags: TagRow[],
   ctx: SerializeContext,
 ): PublicProfileDetail {

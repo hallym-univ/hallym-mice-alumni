@@ -8,6 +8,7 @@ import {
   toProfileDetail,
   type PublicProfileCard,
   type PublicProfileDetail,
+  type PublicProfileSource,
 } from "@/lib/profile/visibility";
 import type { AuthContext } from "@/lib/guards/withAuth";
 import type { ProfileRow, TagRow } from "@/types/database";
@@ -35,6 +36,8 @@ export interface DirectoryResult {
 }
 
 const DEFAULT_LIMIT = 20;
+const PROFILE_DETAIL_COLS =
+  "id,name,role,status,is_verified,admission_year,graduation_year,department,organization,employment_status,position,bio,career_summary,coffeechat_status,open_kakao_url,proposal_email_allowed,photo_path,is_public,field_visibility,deleted_at,updated_at";
 
 /** 디렉토리 목록/검색. 차단 관계·비공개·비활성·탈퇴는 제외한다. */
 export async function listDirectory(
@@ -157,9 +160,9 @@ export async function getProfileDetail(
 
   const { data, error } = await admin
     .from("profiles")
-    .select("*")
+    .select(PROFILE_DETAIL_COLS)
     .eq("id", profileId)
-    .maybeSingle<ProfileRow>();
+    .maybeSingle<PublicProfileSource>();
 
   if (error) throw new Error(`[profile] 조회 실패: ${error.message}`);
   if (!data) return { kind: "not_found" };
