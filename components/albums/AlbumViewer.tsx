@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { r2PublicUrl } from "@/lib/utils";
-import type { AlbumImageRow, AlbumRow } from "@/types/database";
+import type { PublicAlbumDetail, PublicAlbumImage } from "@/lib/albums/types";
 
 /**
  * 회원 갤러리 — 앨범 상세 뷰어 (T-156 / §6.5).
@@ -25,8 +25,8 @@ export function AlbumViewer({
   album,
   images,
 }: {
-  album: AlbumRow;
-  images: AlbumImageRow[];
+  album: PublicAlbumDetail;
+  images: PublicAlbumImage[];
 }) {
   const [active, setActive] = useState<number | null>(null);
   const count = images.length;

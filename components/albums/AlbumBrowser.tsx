@@ -19,13 +19,13 @@ import {
 } from "@/components/ui/select";
 import { EMPTY } from "@/lib/messages";
 import { cn } from "@/lib/utils";
-import type { AlbumRow } from "@/types/database";
+import type { PublicAlbumListItem } from "@/lib/albums/types";
 
 const VISIBLE_YEAR_COUNT = 4;
 const VISIBLE_TAG_COUNT = 8;
 const OLDER_YEAR_PLACEHOLDER = "__older_year_placeholder";
 
-export function AlbumBrowser({ albums }: { albums: AlbumRow[] }) {
+export function AlbumBrowser({ albums }: { albums: PublicAlbumListItem[] }) {
   const [query, setQuery] = useState("");
   const [year, setYear] = useState<string>("all");
   const [tag, setTag] = useState<string>("all");
@@ -164,15 +164,15 @@ function FilterChip({
   );
 }
 
-function getAlbumYear(album: AlbumRow): string | null {
+function getAlbumYear(album: PublicAlbumListItem): string | null {
   return album.event_date?.slice(0, 4) ?? null;
 }
 
-function getAlbumTags(album: AlbumRow): string[] {
+function getAlbumTags(album: PublicAlbumListItem): string[] {
   return album.hashtags ?? [];
 }
 
-function getYears(albums: AlbumRow[]) {
+function getYears(albums: PublicAlbumListItem[]) {
   return [
     ...new Set(
       albums
@@ -182,7 +182,7 @@ function getYears(albums: AlbumRow[]) {
   ].sort((a, b) => Number(b) - Number(a));
 }
 
-function getTopTags(albums: AlbumRow[]) {
+function getTopTags(albums: PublicAlbumListItem[]) {
   const counts = new Map<string, number>();
   for (const album of albums) {
     for (const tag of getAlbumTags(album)) {

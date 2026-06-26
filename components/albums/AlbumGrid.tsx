@@ -5,14 +5,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { GradientCover } from "@/components/common/GradientCover";
 import { Badge } from "@/components/ui/badge";
 import { r2PublicUrl } from "@/lib/utils";
-import type { AlbumRow } from "@/types/database";
+import type { PublicAlbumListItem } from "@/lib/albums/types";
 
 /**
  * 회원 갤러리 — 공개 앨범 카드 그리드 (T-156 / §6.5).
  * 대표 이미지 + 제목 + 행사일. 클릭 시 상세로.
  * 서버 컴포넌트(데이터는 상위 server component 에서 주입). r2PublicUrl 은 공개값 기반.
  */
-export function AlbumGrid({ albums }: { albums: AlbumRow[] }) {
+export function AlbumGrid({ albums }: { albums: PublicAlbumListItem[] }) {
   return (
     <ul className="grid grid-cols-2 gap-3">
       {albums.map((a) => (

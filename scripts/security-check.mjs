@@ -499,6 +499,23 @@ function checkDataMinimization() {
   if (detailBlock.includes('.select("*")')) {
     addFailure("lib/profile/queries.ts: profile detail must not select all columns");
   }
+
+  const albumPublic = read("lib/albums/public.ts");
+  for (const fragment of [
+    "PublicAlbumListItem",
+    "PublicAlbumDetail",
+    "PublicAlbumImage",
+    ".select(\"id,title,event_date,description,hashtags,cover_image_key,created_at\")",
+    ".select(\"id,title,event_date,description,hashtags,cover_image_key,youtube_video_id,consent_confirmed,is_public,created_at,updated_at\")",
+    ".select(\"id,image_key,caption,sort_order,created_at\")",
+  ]) {
+    if (!albumPublic.includes(fragment)) {
+      addFailure(`lib/albums/public.ts: missing album public column policy fragment ${fragment}`);
+    }
+  }
+  if (albumPublic.includes('.select("*")')) {
+    addFailure("lib/albums/public.ts: public album queries must not select all columns");
+  }
 }
 
 function checkListQueryParamValidation() {

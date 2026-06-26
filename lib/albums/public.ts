@@ -2,7 +2,11 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AuthContext } from "@/lib/guards/withAuth";
-import type { AlbumImageRow, AlbumRow } from "@/types/database";
+import type {
+  PublicAlbumDetail,
+  PublicAlbumImage,
+  PublicAlbumListItem,
+} from "@/lib/albums/types";
 
 /**
  * 회원 갤러리 열람용 서버 조회 (§6.5-5 / T-156).
@@ -12,17 +16,17 @@ import type { AlbumImageRow, AlbumRow } from "@/types/database";
  */
 
 /** 공개 앨범 목록(최신 행사일 순). limit 으로 미리보기용 소량 조회 가능. */
-export async function listPublicAlbums(limit = 200): Promise<AlbumRow[]> {
+export async function listPublicAlbums(limit = 200): Promise<PublicAlbumListItem[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("albums")
-    .select("*")
+    .select("id,title,event_date,description,hashtags,cover_image_key,created_at")
     .eq("is_public", true)
     .order("event_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(`[albums] 목록 조회 실패: ${error.message}`);
-  return (data ?? []) as AlbumRow[];
+  return (data ?? []) as PublicAlbumListItem[];
 }
 
 /**
@@ -32,23 +36,23 @@ export async function listPublicAlbums(limit = 200): Promise<AlbumRow[]> {
 export async function getPublicAlbum(
   me: AuthContext,
   id: string,
-): Promise<{ album: AlbumRow; images: AlbumImageRow[] } | null> {
+): Promise<{ album: PublicAlbumDetail; images: PublicAlbumImage[] } | null> {
   const admin = createAdminClient();
   const { data: album } = await admin
     .from("albums")
-    .select("*")
+    .select("id,title,event_date,description,hashtags,cover_image_key,youtube_video_id,consent_confirmed,is_public,created_at,updated_at")
     .eq("id", id)
-    .maybeSingle<AlbumRow>();
+    .maybeSingle<PublicAlbumDetail>();
 
   if (!album) return null;
   if (!album.is_public && !me.isAdmin) return null;
 
   const { data: images } = await admin
     .from("album_images")
-    .select("*")
+    .select("id,image_key,caption,sort_order,created_at")
     .eq("album_id", id)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
-  return { album, images: (images ?? []) as AlbumImageRow[] };
+  return { album, images: (images ?? []) as PublicAlbumImage[] };
 }

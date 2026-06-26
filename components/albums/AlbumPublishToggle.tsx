@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import type { AlbumRow } from "@/types/database";
+import type { PublicAlbumDetail } from "@/lib/albums/types";
 
 /**
  * 앨범 상세 인라인 관리바에 주입하는 공개/비공개 토글.
@@ -14,7 +14,7 @@ import type { AlbumRow } from "@/types/database";
  * 서버도 consent 없이 공개 시 400 으로 거부하므로(route.ts) 비활성은 보조 UX 일 뿐.
  * 성공 시 router.refresh()로 SSR 재검증한다.
  */
-export function AlbumPublishToggle({ album }: { album: AlbumRow }) {
+export function AlbumPublishToggle({ album }: { album: PublicAlbumDetail }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
