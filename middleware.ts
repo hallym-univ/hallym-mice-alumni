@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 import { publicEnv } from "@/lib/env";
+import { supabaseCookieOptions } from "@/lib/supabase/cookies";
 
 /**
  * middleware (§9.4):
@@ -95,6 +96,7 @@ export async function middleware(request: NextRequest) {
     publicEnv.supabaseUrl,
     publicEnv.supabaseAnonKey,
     {
+      cookieOptions: supabaseCookieOptions,
       cookies: {
         getAll() {
           return request.cookies.getAll();

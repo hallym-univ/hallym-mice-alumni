@@ -155,6 +155,27 @@ function checkSecurityHeaders() {
   }
 }
 
+function checkSupabaseCookiePolicy() {
+  const cookiePolicy = read("lib/supabase/cookies.ts");
+  for (const fragment of [
+    'path: "/"',
+    'sameSite: "lax"',
+    'process.env.NODE_ENV === "production"',
+    "httpOnly: false",
+  ]) {
+    if (!cookiePolicy.includes(fragment)) {
+      addFailure(`lib/supabase/cookies.ts: missing explicit Supabase auth cookie policy fragment ${fragment}`);
+    }
+  }
+
+  for (const rel of ["middleware.ts", "lib/supabase/server.ts", "lib/supabase/client.ts"]) {
+    const source = read(rel);
+    if (!source.includes("supabaseCookieOptions")) {
+      addFailure(`${rel}: Supabase client must use explicit cookieOptions`);
+    }
+  }
+}
+
 function checkExternalLinks(files) {
   for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
     const source = read(rel);
@@ -296,6 +317,7 @@ checkNoClientSecretImports(files);
 checkSensitiveLibsAreServerOnly(files);
 checkApiRoutes();
 checkSecurityHeaders();
+checkSupabaseCookiePolicy();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkEnvFiles();

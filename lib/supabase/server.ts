@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 import { publicEnv } from "@/lib/env";
+import { supabaseCookieOptions } from "@/lib/supabase/cookies";
 import type { Database } from "@/types/database";
 
 /**
@@ -22,6 +23,7 @@ export async function createClient() {
     publicEnv.supabaseUrl,
     publicEnv.supabaseAnonKey,
     {
+      cookieOptions: supabaseCookieOptions,
       cookies: {
         getAll() {
           return cookieStore.getAll();

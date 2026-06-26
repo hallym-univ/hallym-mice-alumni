@@ -1,6 +1,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 
 import { publicEnv } from "@/lib/env";
+import { supabaseCookieOptions } from "@/lib/supabase/cookies";
 import type { Database } from "@/types/database";
 
 /**
@@ -15,5 +16,6 @@ export function createClient() {
   return createBrowserClient<Database>(
     publicEnv.supabaseUrl,
     publicEnv.supabaseAnonKey,
+    { cookieOptions: supabaseCookieOptions },
   );
 }
