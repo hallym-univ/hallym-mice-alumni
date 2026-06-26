@@ -407,10 +407,8 @@ export const clientEventInputSchema = z.object({
   eventType: z.enum([
     "profile_view",
     "coffeechat_click",
-    "proposal_email_click",
     "job_view",
     "job_apply_click",
-    "job_bookmark",
     "article_view",
     "newsletter_click",
   ]),

@@ -194,6 +194,7 @@ function checkApiMutationBodyGuard() {
 
 function checkHighRiskMutationRateLimits() {
   const expectations = new Map([
+    ["app/api/events/route.ts", ["checkDailyLimit", "CLIENT_EVENT_DAILY_LIMIT", "CLIENT_EVENT_TARGET_DAILY_LIMIT"]],
     ["app/api/posts/route.ts", ["checkDailyLimit", "post_create"]],
     ["app/api/posts/[id]/comments/route.ts", ["checkDailyLimit", "comment_create"]],
     ["app/api/uploads/route.ts", ["checkDailyLimit", "profile_upload_url_request", "asset_upload_url_request"]],
@@ -208,6 +209,32 @@ function checkHighRiskMutationRateLimits() {
       if (!source.includes(fragment)) {
         addFailure(`${rel}: high-risk mutation must keep rate limit fragment ${fragment}`);
       }
+    }
+  }
+}
+
+function checkClientWritableEventTypes() {
+  const source = read("lib/validators/index.ts");
+  const start = source.indexOf("export const clientEventInputSchema");
+  const end = source.indexOf("/** 제안 이메일", start);
+  const block = start >= 0 && end > start ? source.slice(start, end) : "";
+  if (!block) {
+    addFailure("lib/validators/index.ts: missing clientEventInputSchema");
+    return;
+  }
+
+  for (const serverOnlyEvent of [
+    "proposal_email_click",
+    "job_bookmark",
+    "post_create",
+    "comment_create",
+    "profile_upload_url_request",
+    "asset_upload_url_request",
+    "remote_image_import",
+    "report_submit",
+  ]) {
+    if (block.includes(serverOnlyEvent)) {
+      addFailure(`lib/validators/index.ts: server-side event ${serverOnlyEvent} must not be client-writable`);
     }
   }
 }
@@ -372,6 +399,7 @@ checkSecurityHeaders();
 checkSupabaseCookiePolicy();
 checkApiMutationBodyGuard();
 checkHighRiskMutationRateLimits();
+checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
