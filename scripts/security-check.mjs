@@ -131,9 +131,15 @@ function checkSecurityHeaders() {
     "X-Frame-Options",
     "Referrer-Policy",
     "Permissions-Policy",
+    "Cross-Origin-Opener-Policy",
+    "Origin-Agent-Cluster",
+    "X-DNS-Prefetch-Control",
     "Strict-Transport-Security",
   ]) {
     if (!source.includes(header)) addFailure(`next.config.mjs: missing ${header}`);
+  }
+  if (!source.includes("Cache-Control") || !source.includes("no-store")) {
+    addFailure("next.config.mjs: API responses must opt out of shared caching");
   }
 }
 

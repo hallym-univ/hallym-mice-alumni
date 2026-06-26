@@ -5,6 +5,9 @@ const securityHeaders = {
   "x-frame-options": "DENY",
   "referrer-policy": "strict-origin-when-cross-origin",
   "permissions-policy": /camera=\(\).*microphone=\(\).*geolocation=\(\).*payment=\(\)/,
+  "cross-origin-opener-policy": "same-origin",
+  "origin-agent-cluster": "?1",
+  "x-dns-prefetch-control": "off",
 };
 
 test("public landing page renders and carries security headers", async ({ page }) => {
@@ -16,6 +19,11 @@ test("public landing page renders and carries security headers", async ({ page }
   expect(headers["x-frame-options"]).toBe(securityHeaders["x-frame-options"]);
   expect(headers["referrer-policy"]).toBe(securityHeaders["referrer-policy"]);
   expect(headers["permissions-policy"]).toMatch(securityHeaders["permissions-policy"]);
+  expect(headers["cross-origin-opener-policy"]).toBe(
+    securityHeaders["cross-origin-opener-policy"],
+  );
+  expect(headers["origin-agent-cluster"]).toBe(securityHeaders["origin-agent-cluster"]);
+  expect(headers["x-dns-prefetch-control"]).toBe(securityHeaders["x-dns-prefetch-control"]);
 
   await expect(page).toHaveTitle(/한림 MICE 동문/);
   await expect(page.getByRole("heading", { name: "흩어진 동문을, 다시 잇다." })).toBeVisible();
@@ -34,10 +42,12 @@ test("authenticated API endpoints reject anonymous mutation and reads", async ({
     data: { eventType: "profile_view", targetId: "00000000-0000-4000-8000-000000000000" },
   });
   expect(mutation.status()).toBe(401);
+  expect(mutation.headers()["cache-control"]).toContain("no-store");
   await expectJson(mutation, { error: "로그인이 필요합니다." });
 
   const read = await request.get("/api/profiles");
   expect(read.status()).toBe(401);
+  expect(read.headers()["cache-control"]).toContain("no-store");
   await expectJson(read, { error: "로그인이 필요합니다." });
 });
 
@@ -51,6 +61,7 @@ test("cross-site mutation is rejected before auth lookup", async ({ request }) =
   });
 
   expect(response.status()).toBe(403);
+  expect(response.headers()["cache-control"]).toContain("no-store");
   await expectJson(response, { error: "허용되지 않은 요청입니다." });
 });
 

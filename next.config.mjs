@@ -21,8 +21,28 @@ const securityHeaders = [
     value: "camera=(), microphone=(), geolocation=(), payment=()",
   },
   {
+    key: "Cross-Origin-Opener-Policy",
+    value: "same-origin",
+  },
+  {
+    key: "Origin-Agent-Cluster",
+    value: "?1",
+  },
+  {
+    key: "X-DNS-Prefetch-Control",
+    value: "off",
+  },
+  {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
+  },
+];
+
+const apiHeaders = [
+  ...securityHeaders,
+  {
+    key: "Cache-Control",
+    value: "no-store, private",
   },
 ];
 
@@ -31,6 +51,10 @@ const nextConfig = {
   reactStrictMode: true,
   async headers() {
     return [
+      {
+        source: "/api/:path*",
+        headers: apiHeaders,
+      },
       {
         source: "/:path*",
         headers: securityHeaders,
