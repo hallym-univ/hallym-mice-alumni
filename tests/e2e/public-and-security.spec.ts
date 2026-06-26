@@ -84,6 +84,14 @@ test("cross-site mutation is rejected before auth lookup", async ({ request }) =
 });
 
 test("mutating APIs reject invalid request bodies before auth lookup", async ({ request }) => {
+  const unsupportedHeaderOnly = await request.fetch("/api/events", {
+    method: "POST",
+    headers: { "content-type": "text/plain" },
+  });
+  expect(unsupportedHeaderOnly.status()).toBe(415);
+  expect(unsupportedHeaderOnly.headers()["cache-control"]).toContain("no-store");
+  await expectJson(unsupportedHeaderOnly, { error: "JSON 요청만 처리할 수 있어요." });
+
   const unsupported = await request.post("/api/events", {
     data: "eventType=profile_view",
     headers: { "content-type": "text/plain" },

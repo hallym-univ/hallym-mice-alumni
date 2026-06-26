@@ -242,6 +242,7 @@ function checkApiMutationBodyGuard() {
   for (const fragment of [
     "MAX_MUTATION_BODY_BYTES",
     "content-length",
+    "contentType && !isJsonContentType(contentType)",
     "isJsonContentType",
     "jsonError(413",
     "jsonError(415",

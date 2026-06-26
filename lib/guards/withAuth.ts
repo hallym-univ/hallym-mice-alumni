@@ -85,6 +85,11 @@ function isBlockedCrossSiteMutation(req: Request): boolean {
 function rejectInvalidMutationBody(req: Request): Response | null {
   if (!MUTATING_METHODS.has(req.method.toUpperCase())) return null;
 
+  const contentType = req.headers.get("content-type");
+  if (contentType && !isJsonContentType(contentType)) {
+    return jsonError(415, "JSON 요청만 처리할 수 있어요.");
+  }
+
   const contentLengthHeader = req.headers.get("content-length");
   if (!contentLengthHeader) return null;
 
@@ -96,10 +101,6 @@ function rejectInvalidMutationBody(req: Request): Response | null {
     return jsonError(413, "요청 본문이 너무 큽니다.");
   }
   if (bodyBytes === 0) return null;
-
-  if (!isJsonContentType(req.headers.get("content-type"))) {
-    return jsonError(415, "JSON 요청만 처리할 수 있어요.");
-  }
 
   return null;
 }
