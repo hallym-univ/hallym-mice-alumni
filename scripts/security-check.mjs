@@ -127,6 +127,7 @@ function checkApiRoutes() {
 function checkSecurityHeaders() {
   const source = read("next.config.mjs");
   for (const header of [
+    "Content-Security-Policy",
     "X-Content-Type-Options",
     "X-Frame-Options",
     "Referrer-Policy",
@@ -140,6 +141,17 @@ function checkSecurityHeaders() {
   }
   if (!source.includes("Cache-Control") || !source.includes("no-store")) {
     addFailure("next.config.mjs: API responses must opt out of shared caching");
+  }
+  for (const directive of [
+    "default-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "connect-src 'self' https: wss:",
+  ]) {
+    if (!source.includes(directive)) {
+      addFailure(`next.config.mjs: CSP missing ${directive}`);
+    }
   }
 }
 

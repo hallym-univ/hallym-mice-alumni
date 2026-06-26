@@ -10,6 +10,15 @@ const securityHeaders = {
   "x-dns-prefetch-control": "off",
 };
 
+const cspDirectives = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "connect-src 'self' https: wss:",
+  "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+];
+
 test("public landing page renders and carries security headers", async ({ page }) => {
   const response = await page.goto("/");
   expect(response?.ok()).toBe(true);
@@ -24,6 +33,9 @@ test("public landing page renders and carries security headers", async ({ page }
   );
   expect(headers["origin-agent-cluster"]).toBe(securityHeaders["origin-agent-cluster"]);
   expect(headers["x-dns-prefetch-control"]).toBe(securityHeaders["x-dns-prefetch-control"]);
+  for (const directive of cspDirectives) {
+    expect(headers["content-security-policy"]).toContain(directive);
+  }
 
   await expect(page).toHaveTitle(/한림 MICE 동문/);
   await expect(page.getByRole("heading", { name: "흩어진 동문을, 다시 잇다." })).toBeVisible();
