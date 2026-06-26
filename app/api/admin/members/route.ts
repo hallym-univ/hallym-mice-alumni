@@ -3,7 +3,11 @@ import { recordAdminLog } from "@/lib/admin/log";
 import { withAuth } from "@/lib/guards/withAuth";
 import { anonymizeProfileForWithdrawal } from "@/lib/profile/withdraw";
 import { toSafeIlikePattern } from "@/lib/search";
-import { adminMemberListQuerySchema, adminMemberPatchSchema } from "@/lib/validators";
+import {
+  adminMemberDeleteSchema,
+  adminMemberListQuerySchema,
+  adminMemberPatchSchema,
+} from "@/lib/validators";
 import type { ProfileRow } from "@/types/database";
 
 /**
@@ -164,6 +168,8 @@ export const PATCH = withAuth(
           { status: 400 },
         );
       }
+      const lastAdminResponse = await rejectLastAdminWithdrawal(admin, profileId);
+      if (lastAdminResponse) return lastAdminResponse;
 
       let member: Awaited<ReturnType<typeof anonymizeProfileForWithdrawal>>;
       try {
@@ -209,3 +215,105 @@ export const PATCH = withAuth(
   },
   { role: "admin" },
 );
+
+export const DELETE = withAuth(
+  async (req, { me }) => {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return Response.json({ error: "잘못된 요청 본문이에요." }, { status: 400 });
+    }
+
+    const parsed = adminMemberDeleteSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "회원 식별자를 확인해주세요." },
+        { status: 400 },
+      );
+    }
+
+    const { profileId } = parsed.data;
+    if (profileId === me.profile.id) {
+      return Response.json(
+        { error: "본인 계정은 삭제 처리할 수 없어요." },
+        { status: 400 },
+      );
+    }
+
+    const admin = createAdminClient();
+    const { data: existing, error: existingError } = await admin
+      .from("profiles")
+      .select("id,status,photo_path")
+      .eq("id", profileId)
+      .maybeSingle<Pick<ProfileRow, "id" | "status" | "photo_path">>();
+
+    if (existingError || !existing) {
+      return Response.json({ error: "회원을 찾을 수 없어요." }, { status: 404 });
+    }
+    if (existing.status === "withdrawn") {
+      return Response.json(
+        { error: "이미 삭제 처리된 회원이에요." },
+        { status: 400 },
+      );
+    }
+
+    const lastAdminResponse = await rejectLastAdminWithdrawal(admin, profileId);
+    if (lastAdminResponse) return lastAdminResponse;
+
+    let member: Awaited<ReturnType<typeof anonymizeProfileForWithdrawal>>;
+    try {
+      member = await anonymizeProfileForWithdrawal(admin, profileId, {
+        photoPath: existing.photo_path,
+      });
+    } catch (error) {
+      console.error("[admin members delete]", error);
+      return Response.json({ error: "회원 삭제 처리에 실패했어요." }, { status: 500 });
+    }
+
+    await recordAdminLog({
+      adminProfileId: me.profile.id,
+      action: "member_delete",
+      targetType: "profile",
+      targetId: profileId,
+      detail: { mode: "withdraw_anonymize", status: "withdrawn" },
+    });
+
+    return Response.json({ member });
+  },
+  { role: "admin" },
+);
+
+async function rejectLastAdminWithdrawal(
+  admin: ReturnType<typeof createAdminClient>,
+  profileId: string,
+): Promise<Response | null> {
+  const [targetAdmin, adminRows] = await Promise.all([
+    admin
+      .from("admins")
+      .select("id")
+      .eq("profile_id", profileId)
+      .maybeSingle<{ id: string }>(),
+    admin.from("admins").select("profile_id").limit(2),
+  ]);
+
+  if (targetAdmin.error || adminRows.error) {
+    console.error("[admin members admin guard]", {
+      targetAdmin: targetAdmin.error,
+      adminRows: adminRows.error,
+    });
+    return Response.json(
+      { error: "관리자 권한 조회에 실패했어요." },
+      { status: 500 },
+    );
+  }
+
+  if (targetAdmin.data && (adminRows.data?.length ?? 0) <= 1) {
+    return Response.json(
+      { error: "마지막 관리자는 삭제 처리할 수 없어요." },
+      { status: 400 },
+    );
+  }
+
+  return null;
+}

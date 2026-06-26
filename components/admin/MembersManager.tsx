@@ -1,10 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -72,6 +81,7 @@ export function MembersManager() {
   const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Member | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -139,6 +149,29 @@ export function MembersManager() {
         setActionError(json.error ?? "관리자 권한 변경에 실패했어요.");
         return;
       }
+      await load();
+    } catch {
+      setActionError("네트워크 오류가 발생했어요.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function deleteMember(profileId: string) {
+    setBusyId(profileId);
+    setActionError(null);
+    try {
+      const res = await fetch("/api/admin/members", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ profileId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError(json.error ?? "회원 삭제 처리에 실패했어요.");
+        return;
+      }
+      setDeleteTarget(null);
       await load();
     } catch {
       setActionError("네트워크 오류가 발생했어요.");
@@ -235,7 +268,10 @@ export function MembersManager() {
                         void patch(m.id, { role: v as ProfileRole })
                       }
                     >
-                      <SelectTrigger className="h-10" disabled={busyId === m.id}>
+                      <SelectTrigger
+                        className="h-10"
+                        disabled={busyId === m.id || m.status === "withdrawn" || m.is_self}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -260,7 +296,10 @@ export function MembersManager() {
                         void patch(m.id, { status: v as ProfileStatus })
                       }
                     >
-                      <SelectTrigger className="h-10" disabled={busyId === m.id}>
+                      <SelectTrigger
+                        className="h-10"
+                        disabled={busyId === m.id || m.status === "withdrawn" || m.is_self}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -294,6 +333,11 @@ export function MembersManager() {
                     onCheckedChange={(v) => void setAdminAccess(m.id, v)}
                   />
                 </div>
+                {m.is_self ? (
+                  <p className="-mt-2 px-1 text-xs text-muted-foreground">
+                    본인 계정의 역할과 상태는 다른 관리자가 변경해야 해요.
+                  </p>
+                ) : null}
                 {m.status !== "active" ? (
                   <p className="-mt-2 px-1 text-xs text-muted-foreground">
                     정지·탈퇴 회원에게는 관리자 권한을 부여할 수 없어요.
@@ -319,17 +363,61 @@ export function MembersManager() {
                   <Switch
                     id={`verified-${m.id}`}
                     checked={m.is_verified}
-                    disabled={busyId === m.id}
+                    disabled={busyId === m.id || m.status === "withdrawn"}
                     onCheckedChange={(v) =>
                       void patch(m.id, { isVerified: v })
                     }
                   />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={busyId === m.id || m.status === "withdrawn" || m.is_self}
+                    onClick={() => setDeleteTarget(m)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    회원 삭제
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           ))}
         </ul>
       )}
+
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>회원 삭제</DialogTitle>
+            <DialogDescription>
+              {deleteTarget?.name ?? "선택한 회원"} 계정을 탈퇴 상태로 바꾸고
+              프로필 개인정보와 운영 권한을 정리할까요?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!deleteTarget || busyId === deleteTarget.id}
+              onClick={() => {
+                if (deleteTarget) void deleteMember(deleteTarget.id);
+              }}
+            >
+              삭제
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

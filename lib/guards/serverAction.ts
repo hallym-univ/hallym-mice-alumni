@@ -3,6 +3,10 @@ import "server-only";
 import { headers } from "next/headers";
 
 import { publicEnv } from "@/lib/env";
+import {
+  isSameOriginOrLoopbackAlias,
+  toOrigin,
+} from "@/lib/security/origin";
 
 const ALLOWED_FETCH_SITES = new Set(["same-origin", "same-site"]);
 
@@ -24,8 +28,10 @@ export async function assertServerActionRequest(): Promise<void> {
   if (!origin) return;
 
   const allowedOrigins = allowedRequestOrigins(h);
-  const requestOrigin = toOrigin(origin);
-  if (!requestOrigin || !allowedOrigins.has(requestOrigin)) {
+  const isAllowedOrigin = Array.from(allowedOrigins).some((allowedOrigin) =>
+    isSameOriginOrLoopbackAlias(origin, allowedOrigin),
+  );
+  if (!isAllowedOrigin) {
     throw new ServerActionSecurityError();
   }
 }
@@ -57,12 +63,4 @@ function originFromHost(host: string, proto: string | null): string | null {
 function isLocalHost(host: string): boolean {
   const hostname = host.split(":")[0]?.toLowerCase();
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-}
-
-function toOrigin(value: string): string | null {
-  try {
-    return new URL(value).origin;
-  } catch {
-    return null;
-  }
 }

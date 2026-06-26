@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ensureAdminRow } from "@/lib/admin/ensureAdminRow";
 import { recordAdminLog } from "@/lib/admin/log";
 import { withAuth } from "@/lib/guards/withAuth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -29,6 +30,16 @@ export const POST = withAuth(
 
     const { profileId } = parsed.data;
     const admin = createAdminClient();
+    try {
+      await ensureAdminRow(admin, me.profile.id);
+    } catch (error) {
+      console.error("[admin admins ensure self]", error);
+      return Response.json(
+        { error: "관리자 권한 초기화에 실패했어요." },
+        { status: 500 },
+      );
+    }
+
     const target = await getTargetProfile(admin, profileId);
 
     if (!target) {
@@ -48,6 +59,7 @@ export const POST = withAuth(
       .maybeSingle<{ id: string }>();
 
     if (existingError) {
+      console.error("[admin admins lookup]", existingError);
       return Response.json(
         { error: "관리자 권한 조회에 실패했어요." },
         { status: 500 },
@@ -63,6 +75,7 @@ export const POST = withAuth(
     });
 
     if (error) {
+      console.error("[admin admins grant]", error);
       return Response.json(
         { error: "관리자 권한 부여에 실패했어요." },
         { status: 500 },
@@ -112,6 +125,10 @@ export const DELETE = withAuth(
     ]);
 
     if (adminRows.error || targetAdmin.error) {
+      console.error("[admin admins revoke lookup]", {
+        adminRows: adminRows.error,
+        targetAdmin: targetAdmin.error,
+      });
       return Response.json(
         { error: "관리자 권한 조회에 실패했어요." },
         { status: 500 },
@@ -136,6 +153,7 @@ export const DELETE = withAuth(
       .eq("profile_id", profileId);
 
     if (error) {
+      console.error("[admin admins revoke]", error);
       return Response.json(
         { error: "관리자 권한 해제에 실패했어요." },
         { status: 500 },

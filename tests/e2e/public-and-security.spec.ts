@@ -87,6 +87,19 @@ test("cross-site mutation is rejected before auth lookup", async ({ request }) =
   await expectJson(response, { error: "허용되지 않은 요청입니다." });
 });
 
+test("loopback origin aliases reach auth instead of CSRF rejection", async ({ request }) => {
+  const response = await request.post("/api/events", {
+    data: { eventType: "profile_view" },
+    headers: {
+      origin: loopbackAliasOrigin(),
+      "sec-fetch-site": "same-origin",
+    },
+  });
+
+  expect(response.status()).toBe(401);
+  await expectJson(response, { error: "로그인이 필요합니다." });
+});
+
 test("mutating APIs reject invalid request bodies before auth lookup", async ({ request }) => {
   const unsupportedHeaderOnly = await request.fetch("/api/events", {
     method: "POST",
@@ -155,6 +168,12 @@ function baseURL(): URL {
 function baseHostHeader(): string {
   const url = baseURL();
   return url.port ? `${url.hostname}:${url.port}` : url.hostname;
+}
+
+function loopbackAliasOrigin(): string {
+  const url = baseURL();
+  const aliasHost = url.hostname === "localhost" ? "127.0.0.1" : "localhost";
+  return `${url.protocol}//${url.port ? `${aliasHost}:${url.port}` : aliasHost}`;
 }
 
 function sendRawHttpRequest(payload: string): Promise<string> {

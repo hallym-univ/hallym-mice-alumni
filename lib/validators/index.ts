@@ -706,6 +706,10 @@ export const adminMemberPatchSchema = z
     }
   });
 
+export const adminMemberDeleteSchema = z.object({
+  profileId: z.string().uuid("회원 식별자가 올바르지 않아요."),
+});
+
 export const adminReportPatchSchema = z
   .object({
     reportId: z.string().uuid("신고 식별자가 올바르지 않아요."),

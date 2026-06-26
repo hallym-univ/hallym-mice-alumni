@@ -3,8 +3,10 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ensureAdminRow } from "@/lib/admin/ensureAdminRow";
 import { requireAdmin } from "@/lib/guards/requireAdmin";
 import { AuthError } from "@/lib/guards/withAuth";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * 관리자 영역 레이아웃 (§6.7).
@@ -17,7 +19,8 @@ export default async function AdminLayout({
   children: ReactNode;
 }) {
   try {
-    await requireAdmin();
+    const me = await requireAdmin();
+    await ensureAdminRow(createAdminClient(), me.profile.id);
   } catch (err) {
     if (err instanceof AuthError && err.status === 401) {
       redirect("/login?next=/admin");

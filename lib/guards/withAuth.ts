@@ -5,6 +5,7 @@ import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/server-env";
+import { isSameOriginOrLoopbackAlias } from "@/lib/security/origin";
 import type { ProfileRow } from "@/types/database";
 
 /**
@@ -117,11 +118,7 @@ function isBlockedCrossSiteMutation(req: Request): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return false;
 
-  try {
-    return new URL(origin).origin !== new URL(req.url).origin;
-  } catch {
-    return true;
-  }
+  return !isSameOriginOrLoopbackAlias(origin, req.url);
 }
 
 async function prepareMutationRequest(req: Request): Promise<Request | Response> {
