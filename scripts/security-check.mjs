@@ -10,6 +10,13 @@ function read(relPath) {
   return readFileSync(path.join(root, relPath), "utf8");
 }
 
+function readSqlMigrations() {
+  return walk("supabase/migrations")
+    .filter((rel) => rel.endsWith(".sql"))
+    .sort()
+    .map((rel) => ({ rel, source: read(rel) }));
+}
+
 function walk(relDir) {
   const absDir = path.join(root, relDir);
   if (!existsSync(absDir)) return [];
@@ -266,6 +273,52 @@ function checkApiMutationBodyGuard() {
   ]) {
     if (!source.includes(fragment)) {
       addFailure(`lib/guards/withAuth.ts: missing mutation request body guard fragment ${fragment}`);
+    }
+  }
+}
+
+function checkDatabaseRlsPolicyInvariants() {
+  const migrations = readSqlMigrations();
+  const combined = migrations.map(({ source }) => source).join("\n");
+
+  if (/disable\s+row\s+level\s+security/i.test(combined)) {
+    addFailure("supabase/migrations: disabling row level security is not allowed");
+  }
+  if (/\bcreate\s+policy\b/i.test(combined)) {
+    addFailure("supabase/migrations: database policies are intentionally absent; keep access through app server");
+  }
+
+  const tables = new Set();
+  const createTableRe =
+    /\bcreate\s+table(?:\s+if\s+not\s+exists)?\s+(?:public\.)?([a-zA-Z_][\w]*)\b/gi;
+  let match;
+  while ((match = createTableRe.exec(combined))) {
+    tables.add(match[1]);
+  }
+
+  for (const table of [...tables].sort()) {
+    const rlsRe = new RegExp(
+      `\\balter\\s+table\\s+(?:public\\.)?${table}\\s+enable\\s+row\\s+level\\s+security\\b`,
+      "i",
+    );
+    if (!rlsRe.test(combined)) {
+      addFailure(`supabase/migrations: table ${table} must enable row level security`);
+    }
+  }
+
+  const grantMigration = read("supabase/migrations/0011_function_execute_grants.sql");
+  for (const fragment of [
+    "revoke all on function public.rollup_expired_events(integer) from public",
+    "revoke all on function public.rollup_expired_events(integer) from anon",
+    "revoke all on function public.rollup_expired_events(integer) from authenticated",
+    "grant execute on function public.rollup_expired_events(integer) to service_role",
+    "revoke all on function public.get_post_engagement_counts(uuid[]) from public",
+    "revoke all on function public.get_post_engagement_counts(uuid[]) from anon",
+    "revoke all on function public.get_post_engagement_counts(uuid[]) from authenticated",
+    "grant execute on function public.get_post_engagement_counts(uuid[]) to service_role",
+  ]) {
+    if (!grantMigration.includes(fragment)) {
+      addFailure(`supabase/migrations/0011_function_execute_grants.sql: missing function grant invariant ${fragment}`);
     }
   }
 }
@@ -1142,6 +1195,7 @@ checkPublicAssetUrlPolicy();
 checkAuthRedirectPolicy();
 checkSupabaseCookiePolicy();
 checkApiMutationBodyGuard();
+checkDatabaseRlsPolicyInvariants();
 checkHighRiskMutationRateLimits();
 checkUploadSigningPolicy();
 checkRemoteImageImportPolicy();
