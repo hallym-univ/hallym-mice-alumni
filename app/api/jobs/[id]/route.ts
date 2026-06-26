@@ -1,4 +1,5 @@
 import { withAuth } from "@/lib/guards/withAuth";
+import { getAuthorEditedJobStatus } from "@/lib/jobs/policy";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { jobInputSchema } from "@/lib/validators";
 import type { JobRow } from "@/types/database";
@@ -7,8 +8,9 @@ import type { JobRow } from "@/types/database";
  * PATCH  /api/jobs/:id — 공고 수정(작성자/관리자) 또는 마감(action:"close").
  * DELETE /api/jobs/:id — 공고 삭제(작성자/관리자). job_tags/job_bookmarks 는 cascade.
  *
- * 정책: 작성자가 게시중/대기 공고를 수정하면 재심사를 위해 status=pending 으로 되돌린다
- *       (관리자 수정은 상태 유지). status 직접 변경은 입력 스키마에 없다(승인 우회 차단).
+ * 정책: 새 공고는 바로 게시된다. 작성자가 게시중/대기 공고를 수정하면 공개 상태를 유지한다.
+ *       운영자가 숨김/마감 처리한 공고는 작성자 수정으로 다시 공개하지 않는다.
+ *       status 직접 변경은 입력 스키마에 없다.
  */
 type Params = { id: string };
 
@@ -74,9 +76,10 @@ export const PATCH = withAuth<Params>(
     if (input.apply_url !== undefined) update.apply_url = input.apply_url ?? null;
     if (input.contact !== undefined) update.contact = input.contact ?? null;
 
-    // 작성자가 게시중/대기 공고를 고치면 재승인 대기로 되돌린다.
-    if (!me.isAdmin && (existing.status === "published" || existing.status === "pending")) {
-      update.status = "pending";
+    // 작성자가 게시중/대기 공고를 고치면 공개 상태를 유지한다.
+    if (!me.isAdmin) {
+      const nextStatus = getAuthorEditedJobStatus(existing.status);
+      if (nextStatus) update.status = nextStatus;
     }
     update.updated_at = new Date().toISOString();
 

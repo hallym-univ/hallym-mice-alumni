@@ -8,7 +8,7 @@ import { requireMemberPage } from "@/lib/guards/page";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { TagRow } from "@/types/database";
 
-/** 공고 올리기 (§6.4). 등록 시 status=pending → 운영진 승인 후 게시. */
+/** 공고 올리기 (§6.4). 등록 시 바로 게시. */
 export default async function NewJobPage() {
   await requireMemberPage("/jobs/new");
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Bookmark } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ export function BookmarkButton({
   showLabel?: boolean;
   className?: string;
 }) {
+  const router = useRouter();
   const [on, setOn] = useState(initial);
   const [busy, setBusy] = useState(false);
 
@@ -40,7 +42,11 @@ export function BookmarkButton({
       const res = await fetch(`/api/jobs/${jobId}/bookmark`, {
         method: next ? "POST" : "DELETE",
       });
-      if (!res.ok) setOn(!next);
+      if (!res.ok) {
+        setOn(!next);
+        return;
+      }
+      router.refresh();
     } catch {
       setOn(!next);
     } finally {

@@ -1,12 +1,13 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getInitialJobStatus } from "@/lib/jobs/policy";
 import { jobInputSchema } from "@/lib/validators";
 import { listPublishedJobs } from "@/lib/jobs/queries";
 import type { JobType } from "@/types/database";
 
 /**
  * GET  /api/jobs — 게시중 공고 목록/검색 (§6.4). 회원(active)만.
- * POST /api/jobs — 공고 등록. 작성자=본인, status=pending(서버 강제, 관리자 승인 전).
+ * POST /api/jobs — 공고 등록. 작성자=본인, status=published(서버 정책).
  *
  * 쿼리: q, type(job_type), tag, cursor
  */
@@ -65,7 +66,7 @@ export const POST = withAuth(
         requirements: input.requirements ?? null,
         apply_url: input.apply_url ?? null,
         contact: input.contact ?? null,
-        status: "pending", // 관리자 승인 전 — 서버 강제.
+        status: getInitialJobStatus(),
       })
       .select("id")
       .maybeSingle<{ id: string }>();

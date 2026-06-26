@@ -9,7 +9,7 @@ import { requireMemberPage } from "@/lib/guards/page";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { JobRow, TagRow } from "@/types/database";
 
-/** 공고 수정 (§6.4). 작성자 또는 관리자만. 작성자 수정 시 서버가 재승인 대기로 되돌린다. */
+/** 공고 수정 (§6.4). 작성자 또는 관리자만. 공개/대기 공고는 수정 후 공개 상태를 유지한다. */
 export default async function EditJobPage({
   params,
 }: {
