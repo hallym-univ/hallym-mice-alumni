@@ -1,5 +1,6 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { loadMyProfile, loadMyTagIds } from "@/lib/profile/me";
 import { toMyProfile } from "@/lib/profile/visibility";
 import { profileUpdateSchema } from "@/lib/validators";
 import type { ProfileRow } from "@/types/database";
@@ -13,19 +14,16 @@ import type { ProfileRow } from "@/types/database";
  *  명시적 화이트리스트(아래 patch 빌더)로 한 번 더 한정한다.
  */
 
-async function loadMyTagIds(profileId: string): Promise<string[]> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("profile_tags")
-    .select("tag_id")
-    .eq("profile_id", profileId);
-  return (data ?? []).map((r) => r.tag_id);
-}
-
 export const GET = withAuth(
   async (_req, { me }) => {
-    const tagIds = await loadMyTagIds(me.profile.id);
-    return Response.json({ profile: toMyProfile(me.profile, tagIds) });
+    const [profile, tagIds] = await Promise.all([
+      loadMyProfile(me.profile.id),
+      loadMyTagIds(me.profile.id),
+    ]);
+    if (!profile) {
+      return Response.json({ error: "프로필을 찾을 수 없어요." }, { status: 404 });
+    }
+    return Response.json({ profile: toMyProfile(profile, tagIds) });
   },
   { role: "member" },
 );
@@ -109,13 +107,10 @@ export const PATCH = withAuth(
       }
     }
 
-    const { data: fresh } = await admin
-      .from("profiles")
-      .select("*")
-      .eq("id", me.profile.id)
-      .single<ProfileRow>();
-
-    const tagIds = await loadMyTagIds(me.profile.id);
+    const [fresh, tagIds] = await Promise.all([
+      loadMyProfile(me.profile.id),
+      loadMyTagIds(me.profile.id),
+    ]);
     return Response.json({
       profile: fresh ? toMyProfile(fresh, tagIds) : null,
     });

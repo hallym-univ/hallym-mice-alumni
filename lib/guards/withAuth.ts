@@ -25,12 +25,26 @@ import type { ProfileRow } from "@/types/database";
 
 export type Role = "any" | "member" | "admin";
 
+export type AuthProfile = Pick<
+  ProfileRow,
+  | "id"
+  | "name"
+  | "role"
+  | "status"
+  | "admission_year"
+  | "graduation_year"
+  | "photo_path"
+>;
+
+const AUTH_PROFILE_COLS =
+  "id,name,role,status,admission_year,graduation_year,photo_path";
+
 /** 가드를 통과한 호출자 컨텍스트. 핸들러에 이것만 전달한다. */
 export interface AuthContext {
   /** Supabase auth.users 의 user id */
   userId: string;
   email: string | null;
-  profile: ProfileRow;
+  profile: AuthProfile;
   isAdmin: boolean;
 }
 
@@ -164,10 +178,10 @@ const loadAuth = cache(async (): Promise<AuthContext | null> => {
   // 스키마 변화 시 "[] !== null → 전원 admin" 같은 권한 상승이 불가능하게 한다.
   const { data, error } = await admin
     .from("profiles")
-    .select("*, admins!admins_profile_id_fkey(id)")
+    .select(`${AUTH_PROFILE_COLS}, admins!admins_profile_id_fkey(id)`)
     .eq("user_id", user.id)
     .maybeSingle<
-      ProfileRow & { admins: { id: string } | Array<{ id: string }> | null }
+      AuthProfile & { admins: { id: string } | Array<{ id: string }> | null }
     >();
 
   if (error) {
@@ -197,7 +211,7 @@ const loadAuth = cache(async (): Promise<AuthContext | null> => {
 
   const isAdmin = hasAdminRow || isBootstrapAdmin;
 
-  return { userId: user.id, email, profile: profile as ProfileRow, isAdmin };
+  return { userId: user.id, email, profile, isAdmin };
 });
 
 /**

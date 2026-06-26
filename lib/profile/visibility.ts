@@ -169,7 +169,33 @@ export function toProfileDetail(
  * 본인 프로필 편집 화면용(전 필드 + field_visibility). 마스킹 없음.
  * 본인/관리자에게만 반환할 것.
  */
-export function toMyProfile(profile: ProfileRow, tagIds: string[]): MyProfile {
+export type MyProfileSource = Pick<
+  ProfileRow,
+  | "id"
+  | "name"
+  | "role"
+  | "status"
+  | "is_verified"
+  | "student_number"
+  | "admission_year"
+  | "graduation_year"
+  | "department"
+  | "organization"
+  | "employment_status"
+  | "position"
+  | "bio"
+  | "career_summary"
+  | "coffeechat_status"
+  | "open_kakao_url"
+  | "proposal_email_allowed"
+  | "photo_path"
+  | "is_public"
+  | "field_visibility"
+  | "created_at"
+  | "updated_at"
+>;
+
+export function toMyProfile(profile: MyProfileSource, tagIds: string[]): MyProfile {
   return {
     id: profile.id,
     name: profile.name,

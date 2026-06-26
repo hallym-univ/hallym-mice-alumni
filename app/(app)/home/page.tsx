@@ -26,7 +26,7 @@ import { listPublishedPosts, type PostListItem } from "@/lib/connect/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { POST_TYPE_LABEL, formatDate } from "@/lib/labels";
 import type { PublicProfileCard } from "@/lib/profile/visibility";
-import type { ProfileRow } from "@/types/database";
+import type { AuthProfile } from "@/lib/guards/withAuth";
 
 /**
  * 홈 — 콘텐츠 허브 (§6.6 / §11).
@@ -266,7 +266,7 @@ function PostPreview({ post }: { post: PostListItem }) {
 }
 
 function makeRecommendationGroups(
-  me: ProfileRow,
+  me: Pick<AuthProfile, "admission_year" | "graduation_year">,
   profiles: PublicProfileCard[],
 ) {
   const used = new Set<string>();

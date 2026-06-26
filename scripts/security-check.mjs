@@ -462,6 +462,37 @@ function checkUserExternalUrlPolicy() {
 }
 
 function checkDataMinimization() {
+  const authGuard = read("lib/guards/withAuth.ts");
+  for (const fragment of [
+    "export type AuthProfile",
+    "const AUTH_PROFILE_COLS",
+    ".select(`${AUTH_PROFILE_COLS}, admins!admins_profile_id_fkey(id)`)",
+  ]) {
+    if (!authGuard.includes(fragment)) {
+      addFailure(`lib/guards/withAuth.ts: missing auth profile column policy fragment ${fragment}`);
+    }
+  }
+  if (authGuard.includes('.select("*, admins!admins_profile_id_fkey(id)")')) {
+    addFailure("lib/guards/withAuth.ts: auth context must not select all profile columns");
+  }
+
+  const myProfile = read("lib/profile/me.ts");
+  for (const fragment of [
+    "MY_PROFILE_COLS",
+    ".select(MY_PROFILE_COLS)",
+    "loadMyProfile",
+    "loadMyTagIds",
+  ]) {
+    if (!myProfile.includes(fragment)) {
+      addFailure(`lib/profile/me.ts: missing my-profile column policy fragment ${fragment}`);
+    }
+  }
+
+  const myProfileRoute = read("app/api/profiles/me/route.ts");
+  if (myProfileRoute.includes('.select("*")')) {
+    addFailure("app/api/profiles/me/route.ts: profile editor API must not select all columns");
+  }
+
   const jobMutationRoute = read("app/api/jobs/[id]/route.ts");
   if (!jobMutationRoute.includes('.select("id, author_id, status")')) {
     addFailure("app/api/jobs/[id]/route.ts: job access check must use minimal columns");

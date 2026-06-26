@@ -8,9 +8,9 @@ import { Avatar } from "@/components/profile/Avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { requireMemberPage } from "@/lib/guards/page";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublicUrl } from "@/lib/storage";
 import { getTagsMaster } from "@/lib/tags/queries";
+import { loadMyProfile, loadMyTagIds } from "@/lib/profile/me";
 import { toMyProfile } from "@/lib/profile/visibility";
 import { ROLE_LABEL } from "@/lib/labels";
 import type { TagRow } from "@/types/database";
@@ -23,26 +23,26 @@ import type { TagRow } from "@/types/database";
 export default async function MePage() {
   const me = await requireMemberPage("/me");
 
-  const admin = createAdminClient();
-  const [tagRows, { data: myTags }] = await Promise.all([
+  const [profile, tagRows, tagIds] = await Promise.all([
+    loadMyProfile(me.profile.id),
     getTagsMaster(),
-    admin.from("profile_tags").select("tag_id").eq("profile_id", me.profile.id),
+    loadMyTagIds(me.profile.id),
   ]);
+  if (!profile) throw new Error("프로필을 불러오지 못했어요.");
 
-  const tagIds = (myTags ?? []).map((t) => t.tag_id);
-  const myProfile = toMyProfile(me.profile, tagIds);
-  const photoUrl = me.profile.photo_path ? getPublicUrl(me.profile.photo_path) : null;
+  const myProfile = toMyProfile(profile, tagIds);
+  const photoUrl = profile.photo_path ? getPublicUrl(profile.photo_path) : null;
 
   return (
     <div className="px-5 py-5">
       {/* 요약 */}
       <header className="flex items-center gap-3">
-        <Avatar src={photoUrl} name={me.profile.name} size={56} />
+        <Avatar src={photoUrl} name={profile.name} size={56} />
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-bold">{me.profile.name}</h1>
+          <h1 className="truncate text-lg font-bold">{profile.name}</h1>
           <p className="text-sm text-muted-foreground">
-            {ROLE_LABEL[me.profile.role]}
-            {me.profile.department ? ` · ${me.profile.department}` : ""}
+            {ROLE_LABEL[profile.role]}
+            {profile.department ? ` · ${profile.department}` : ""}
           </p>
         </div>
       </header>
@@ -73,7 +73,7 @@ export default async function MePage() {
           <ProfileEditor initial={myProfile} tags={(tagRows ?? []) as TagRow[]} />
         </TabsContent>
         <TabsContent value="account" className="mt-4">
-          <AccountSettings isPublic={me.profile.is_public} />
+          <AccountSettings isPublic={profile.is_public} />
         </TabsContent>
       </Tabs>
     </div>
