@@ -16,6 +16,26 @@ import type { ProfileRow, ReportRow } from "@/types/database";
  *   - suspend: 신고 대상이 회원(profile)이면 status='suspended'.
  * 모든 처리는 admin_logs 에 기록한다(§6.7 완료 기준).
  */
+type AdminReportListItem = Pick<
+  ReportRow,
+  | "id"
+  | "reporter_profile_id"
+  | "target_type"
+  | "target_id"
+  | "reason"
+  | "status"
+  | "handled_by"
+  | "created_at"
+>;
+
+type ReportActionTarget = Pick<
+  ReportRow,
+  "id" | "target_type" | "target_id" | "status"
+>;
+
+const ADMIN_REPORT_LIST_COLS =
+  "id,reporter_profile_id,target_type,target_id,reason,status,handled_by,created_at";
+const ADMIN_REPORT_ACTION_COLS = "id,target_type,target_id,status";
 
 export const GET = withAuth(
   async (req) => {
@@ -32,7 +52,7 @@ export const GET = withAuth(
     const admin = createAdminClient();
     let query = admin
       .from("reports")
-      .select("*")
+      .select(ADMIN_REPORT_LIST_COLS)
       .order("created_at", { ascending: false })
       .limit(100);
 
@@ -45,7 +65,7 @@ export const GET = withAuth(
       return Response.json({ error: "신고 목록 조회에 실패했어요." }, { status: 500 });
     }
 
-    const reports = (data ?? []) as ReportRow[];
+    const reports = (data ?? []) as AdminReportListItem[];
 
     // 신고 대상이 profile 인 경우 표시용으로 이름/상태/공개여부를 함께 첨부한다.
     const profileIds = reports
@@ -147,9 +167,9 @@ export const PATCH = withAuth(
     const admin = createAdminClient();
     const { data: report, error: loadErr } = await admin
       .from("reports")
-      .select("*")
+      .select(ADMIN_REPORT_ACTION_COLS)
       .eq("id", reportId)
-      .maybeSingle<ReportRow>();
+      .maybeSingle<ReportActionTarget>();
 
     if (loadErr || !report) {
       return Response.json({ error: "신고를 찾을 수 없어요." }, { status: 404 });

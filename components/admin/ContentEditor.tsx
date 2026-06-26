@@ -24,6 +24,18 @@ interface RelatedLite {
   name: string;
 }
 
+type AdminArticleEditorItem = Pick<
+  ArticleRow,
+  | "id"
+  | "title"
+  | "summary"
+  | "body"
+  | "cover_path"
+  | "related_profile_id"
+  | "tags"
+  | "status"
+>;
+
 /**
  * 운영자 콘텐츠 편집 (§6.6). AlbumEditor 패턴.
  * 본문/요약/태그/커버/관련 동문 수정 + 게시 상태 전이 + 삭제.
@@ -56,7 +68,7 @@ export function ContentEditor({ articleId }: { articleId?: string }) {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("load failed");
-      const json: { article: ArticleRow; related: RelatedLite | null } =
+      const json: { article: AdminArticleEditorItem; related: RelatedLite | null } =
         await res.json();
       const a = json.article;
       setTitle(a.title);

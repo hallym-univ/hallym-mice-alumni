@@ -16,6 +16,24 @@ import type { AlbumImageRow, AlbumRow } from "@/types/database";
  */
 
 type Params = { id: string };
+type AdminAlbumEditorItem = Pick<
+  AlbumRow,
+  | "id"
+  | "title"
+  | "event_date"
+  | "description"
+  | "hashtags"
+  | "cover_image_key"
+  | "youtube_video_id"
+  | "consent_confirmed"
+  | "is_public"
+>;
+
+type AlbumPublishState = Pick<AlbumRow, "id" | "consent_confirmed" | "is_public">;
+
+const ADMIN_ALBUM_EDITOR_COLS =
+  "id,title,event_date,description,hashtags,cover_image_key,youtube_video_id,consent_confirmed,is_public";
+const ADMIN_ALBUM_IMAGE_EDITOR_COLS = "id,image_key,caption,sort_order";
 
 export const GET = withAuth<Params>(
   async (_req, { params }) => {
@@ -25,9 +43,9 @@ export const GET = withAuth<Params>(
     const admin = createAdminClient();
     const { data: album, error } = await admin
       .from("albums")
-      .select("*")
+      .select(ADMIN_ALBUM_EDITOR_COLS)
       .eq("id", id)
-      .maybeSingle<AlbumRow>();
+      .maybeSingle<AdminAlbumEditorItem>();
 
     if (error || !album) {
       return Response.json({ error: "앨범을 찾을 수 없어요." }, { status: 404 });
@@ -35,12 +53,17 @@ export const GET = withAuth<Params>(
 
     const { data: images } = await admin
       .from("album_images")
-      .select("*")
+      .select(ADMIN_ALBUM_IMAGE_EDITOR_COLS)
       .eq("album_id", id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
 
-    return Response.json({ album, images: (images ?? []) as AlbumImageRow[] });
+    return Response.json({
+      album,
+      images: (images ?? []) as Array<
+        Pick<AlbumImageRow, "id" | "image_key" | "caption" | "sort_order">
+      >,
+    });
   },
   { role: "admin" },
 );
@@ -68,9 +91,9 @@ export const PATCH = withAuth<Params>(
     const admin = createAdminClient();
     const { data: existing, error: loadErr } = await admin
       .from("albums")
-      .select("*")
+      .select("id,consent_confirmed,is_public")
       .eq("id", id)
-      .maybeSingle<AlbumRow>();
+      .maybeSingle<AlbumPublishState>();
     if (loadErr || !existing) {
       return Response.json({ error: "앨범을 찾을 수 없어요." }, { status: 404 });
     }
@@ -90,8 +113,7 @@ export const PATCH = withAuth<Params>(
     if (input.is_public !== undefined) update.is_public = input.is_public;
 
     // 게시 동의 게이트: 최종 상태 기준으로 판정한다.
-    const finalConsent =
-      update.consent_confirmed ?? existing.consent_confirmed;
+    const finalConsent = update.consent_confirmed ?? existing.consent_confirmed;
     const finalPublic = update.is_public ?? existing.is_public;
     if (finalPublic && !finalConsent) {
       return Response.json(
@@ -106,8 +128,8 @@ export const PATCH = withAuth<Params>(
       .from("albums")
       .update(update)
       .eq("id", id)
-      .select("*")
-      .maybeSingle<AlbumRow>();
+      .select(ADMIN_ALBUM_EDITOR_COLS)
+      .maybeSingle<AdminAlbumEditorItem>();
 
     if (error || !data) {
       return Response.json({ error: "앨범 수정에 실패했어요." }, { status: 500 });

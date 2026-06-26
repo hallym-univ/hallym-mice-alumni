@@ -26,7 +26,17 @@ import type { ReportRow, ReportStatus } from "@/types/database";
  * 데이터 접근은 전부 /api/admin/reports(서버, requireAdmin)로만 한다(브라우저 DB 직접 접근 없음).
  */
 
-type ReportWithTarget = ReportRow & {
+type ReportWithTarget = Pick<
+  ReportRow,
+  | "id"
+  | "reporter_profile_id"
+  | "target_type"
+  | "target_id"
+  | "reason"
+  | "status"
+  | "handled_by"
+  | "created_at"
+> & {
   target_profile: {
     id: string;
     name: string;

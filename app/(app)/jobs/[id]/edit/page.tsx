@@ -10,6 +10,25 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { JobRow, TagRow } from "@/types/database";
 
 /** 공고 수정 (§6.4). 작성자 또는 관리자만. 공개/대기 공고는 수정 후 공개 상태를 유지한다. */
+type JobEditorSource = Pick<
+  JobRow,
+  | "id"
+  | "author_id"
+  | "title"
+  | "organization"
+  | "job_type"
+  | "location"
+  | "deadline"
+  | "compensation"
+  | "description"
+  | "requirements"
+  | "apply_url"
+  | "contact"
+>;
+
+const JOB_EDITOR_COLS =
+  "id,author_id,title,organization,job_type,location,deadline,compensation,description,requirements,apply_url,contact";
+
 export default async function EditJobPage({
   params,
 }: {
@@ -21,9 +40,9 @@ export default async function EditJobPage({
   const admin = createAdminClient();
   const { data: job } = await admin
     .from("jobs")
-    .select("*")
+    .select(JOB_EDITOR_COLS)
     .eq("id", id)
-    .maybeSingle<JobRow>();
+    .maybeSingle<JobEditorSource>();
 
   if (!job || (job.author_id !== me.profile.id && !me.isAdmin)) {
     redirect(`/jobs/${id}`);

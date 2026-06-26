@@ -462,6 +462,13 @@ function checkUserExternalUrlPolicy() {
 }
 
 function checkDataMinimization() {
+  for (const rel of [...walk("app"), ...walk("lib")].filter((f) => /\.(ts|tsx)$/.test(f))) {
+    const source = read(rel);
+    if (source.includes('.select("*")') || source.includes(".select('*')")) {
+      addFailure(`${rel}: select all columns is not allowed; use an explicit column list`);
+    }
+  }
+
   const authGuard = read("lib/guards/withAuth.ts");
   for (const fragment of [
     "export type AuthProfile",
@@ -618,6 +625,62 @@ function checkDataMinimization() {
   }
   if (adminAlbumsRoute.includes('.select("*")')) {
     addFailure("app/api/admin/albums/route.ts: admin album route must not select all columns");
+  }
+
+  const adminReportsRoute = read("app/api/admin/reports/route.ts");
+  for (const fragment of [
+    "ADMIN_REPORT_LIST_COLS",
+    ".select(ADMIN_REPORT_LIST_COLS)",
+    "ADMIN_REPORT_ACTION_COLS",
+    ".select(ADMIN_REPORT_ACTION_COLS)",
+    ".limit(100)",
+  ]) {
+    if (!adminReportsRoute.includes(fragment)) {
+      addFailure(`app/api/admin/reports/route.ts: missing admin report column policy fragment ${fragment}`);
+    }
+  }
+
+  const adminAlbumDetailRoute = read("app/api/admin/albums/[id]/route.ts");
+  for (const fragment of [
+    "ADMIN_ALBUM_EDITOR_COLS",
+    ".select(ADMIN_ALBUM_EDITOR_COLS)",
+    "ADMIN_ALBUM_IMAGE_EDITOR_COLS",
+    ".select(ADMIN_ALBUM_IMAGE_EDITOR_COLS)",
+    ".select(\"id,consent_confirmed,is_public\")",
+  ]) {
+    if (!adminAlbumDetailRoute.includes(fragment)) {
+      addFailure(`app/api/admin/albums/[id]/route.ts: missing admin album detail column policy fragment ${fragment}`);
+    }
+  }
+
+  const adminAlbumImagesRoute = read("app/api/admin/albums/[id]/images/route.ts");
+  for (const fragment of [
+    "ADMIN_ALBUM_IMAGE_EDITOR_COLS",
+    ".select(ADMIN_ALBUM_IMAGE_EDITOR_COLS)",
+  ]) {
+    if (!adminAlbumImagesRoute.includes(fragment)) {
+      addFailure(`app/api/admin/albums/[id]/images/route.ts: missing admin album image column policy fragment ${fragment}`);
+    }
+  }
+
+  const adminContentDetailRoute = read("app/api/admin/content/[id]/route.ts");
+  for (const fragment of [
+    "ADMIN_ARTICLE_EDITOR_COLS",
+    ".select(ADMIN_ARTICLE_EDITOR_COLS)",
+  ]) {
+    if (!adminContentDetailRoute.includes(fragment)) {
+      addFailure(`app/api/admin/content/[id]/route.ts: missing admin content detail column policy fragment ${fragment}`);
+    }
+  }
+
+  const jobEditPage = read("app/(app)/jobs/[id]/edit/page.tsx");
+  for (const fragment of [
+    "JOB_EDITOR_COLS",
+    ".select(JOB_EDITOR_COLS)",
+  ]) {
+    if (!jobEditPage.includes(fragment)) {
+      addFailure(`app/(app)/jobs/[id]/edit/page.tsx: missing job editor column policy fragment ${fragment}`);
+    }
   }
 }
 

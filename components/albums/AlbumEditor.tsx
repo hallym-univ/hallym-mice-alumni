@@ -35,10 +35,28 @@ import type { AlbumImageRow, AlbumRow } from "@/types/database";
  *
  * 모든 데이터 접근은 /api/admin/albums/* (서버, requireAdmin)로만 한다.
  */
+type AlbumEditorAlbum = Pick<
+  AlbumRow,
+  | "id"
+  | "title"
+  | "event_date"
+  | "description"
+  | "hashtags"
+  | "cover_image_key"
+  | "youtube_video_id"
+  | "consent_confirmed"
+  | "is_public"
+>;
+
+type AlbumEditorImage = Pick<
+  AlbumImageRow,
+  "id" | "image_key" | "caption" | "sort_order"
+>;
+
 export function AlbumEditor({ albumId }: { albumId: string }) {
   const router = useRouter();
-  const [album, setAlbum] = useState<AlbumRow | null>(null);
-  const [images, setImages] = useState<AlbumImageRow[]>([]);
+  const [album, setAlbum] = useState<AlbumEditorAlbum | null>(null);
+  const [images, setImages] = useState<AlbumEditorImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -89,8 +107,8 @@ function AlbumMetaForm({
   album,
   onSaved,
 }: {
-  album: AlbumRow;
-  onSaved: (a: AlbumRow) => void;
+  album: AlbumEditorAlbum;
+  onSaved: (a: AlbumEditorAlbum) => void;
 }) {
   const [title, setTitle] = useState(album.title);
   const [eventDate, setEventDate] = useState(album.event_date ?? "");
@@ -214,8 +232,8 @@ function PublishControl({
   album,
   onChanged,
 }: {
-  album: AlbumRow;
-  onChanged: (a: AlbumRow) => void;
+  album: AlbumEditorAlbum;
+  onChanged: (a: AlbumEditorAlbum) => void;
 }) {
   const [consent, setConsent] = useState(album.consent_confirmed);
   const [busy, setBusy] = useState(false);
@@ -319,9 +337,9 @@ function ImagesSection({
   onCoverChanged,
 }: {
   albumId: string;
-  images: AlbumImageRow[];
+  images: AlbumEditorImage[];
   coverKey: string | null;
-  onImagesChanged: (imgs: AlbumImageRow[]) => void;
+  onImagesChanged: (imgs: AlbumEditorImage[]) => void;
   onCoverChanged: (key: string) => void;
 }) {
   const { upload, uploading, error: uploadError } = useImageUpload();
@@ -339,7 +357,7 @@ function ImagesSection({
     setBusy(true);
     setProgress({ done: 0, total: files.length });
     try {
-      const added: AlbumImageRow[] = [];
+      const added: AlbumEditorImage[] = [];
       for (const file of Array.from(files)) {
         const key = await upload(file, "album");
         if (key) {
@@ -404,7 +422,10 @@ function ImagesSection({
   const dragFrom = useRef<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
-  async function persistOrder(next: AlbumImageRow[], prev: AlbumImageRow[]) {
+  async function persistOrder(
+    next: AlbumEditorImage[],
+    prev: AlbumEditorImage[],
+  ) {
     setBusy(true);
     setError(null);
     try {

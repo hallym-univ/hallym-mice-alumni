@@ -17,6 +17,20 @@ import type { ArticleRow, ArticleStatus } from "@/types/database";
  * DELETE /api/admin/content/:id — 삭제(커버 R2 객체 정리).
  */
 type Params = { id: string };
+type AdminArticleEditorItem = Pick<
+  ArticleRow,
+  | "id"
+  | "title"
+  | "summary"
+  | "body"
+  | "cover_path"
+  | "related_profile_id"
+  | "tags"
+  | "status"
+>;
+
+const ADMIN_ARTICLE_EDITOR_COLS =
+  "id,title,summary,body,cover_path,related_profile_id,tags,status";
 
 export const GET = withAuth<Params>(
   async (_req, { params }) => {
@@ -26,9 +40,9 @@ export const GET = withAuth<Params>(
     const admin = createAdminClient();
     const { data: article, error } = await admin
       .from("articles")
-      .select("*")
+      .select(ADMIN_ARTICLE_EDITOR_COLS)
       .eq("id", id)
-      .maybeSingle<ArticleRow>();
+      .maybeSingle<AdminArticleEditorItem>();
     if (error || !article) {
       return Response.json({ error: "콘텐츠를 찾을 수 없어요." }, { status: 404 });
     }

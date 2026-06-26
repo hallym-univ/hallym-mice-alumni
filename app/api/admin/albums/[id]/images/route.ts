@@ -18,6 +18,12 @@ import type { AlbumImageRow } from "@/types/database";
  */
 
 type Params = { id: string };
+type AdminAlbumImageEditorItem = Pick<
+  AlbumImageRow,
+  "id" | "image_key" | "caption" | "sort_order"
+>;
+
+const ADMIN_ALBUM_IMAGE_EDITOR_COLS = "id,image_key,caption,sort_order";
 
 export const POST = withAuth<Params>(
   async (req, { me, params }) => {
@@ -73,8 +79,8 @@ export const POST = withAuth<Params>(
         caption: parsed.data.caption ?? null,
         sort_order: sortOrder,
       })
-      .select("*")
-      .maybeSingle<AlbumImageRow>();
+      .select(ADMIN_ALBUM_IMAGE_EDITOR_COLS)
+      .maybeSingle<AdminAlbumImageEditorItem>();
 
     if (error || !data) {
       return Response.json({ error: "이미지 추가에 실패했어요." }, { status: 500 });
