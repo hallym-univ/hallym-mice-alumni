@@ -50,7 +50,7 @@ NEXT_PUBLIC_R2_PUBLIC_BASE_URL=
 | `SUPABASE_SERVICE_ROLE_KEY` | 서버 전용 | 필수 | Supabase Settings > API의 service_role key. 절대 브라우저/`NEXT_PUBLIC_`에 노출 금지 |
 | `NEXT_PUBLIC_SITE_URL` | 공개 | 필수 | 로컬은 `http://localhost:3000`, 배포는 실제 서비스 도메인 |
 | `RESEND_API_KEY` | 서버 전용 | 메일 발송 시 필수 | Resend API Key. 없으면 제안 메일 발송은 skip 처리됨 |
-| `ADMIN_EMAILS` | 서버 전용 | 최초 관리자용 | 최초 관리자 Google 이메일 목록. 콤마로 구분 |
+| `ADMIN_EMAILS` | 서버 전용 | 최초 관리자용 | `admins` 테이블이 비어 있을 때만 임시로 허용되는 최초 관리자 Google 이메일. 이후 권한 관리는 서비스 관리자 화면에서 처리 |
 | `R2_ACCOUNT_ID` | 서버 전용 | 이미지 업로드 시 필수 | Cloudflare 계정 ID |
 | `R2_BUCKET` | 서버 전용 | 이미지 업로드 시 필수 | Cloudflare R2 버킷명 |
 | `R2_ACCESS_KEY_ID` | 서버 전용 | 이미지 업로드 시 필수 | R2 Object Read/Write API 토큰의 Access Key ID |
@@ -61,6 +61,7 @@ NEXT_PUBLIC_R2_PUBLIC_BASE_URL=
 
 - `NEXT_PUBLIC_`로 시작하는 값은 브라우저 번들에 포함될 수 있는 공개값이다.
 - `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`는 시크릿이다. 문서, 이슈, PR, 커밋에 남기지 않는다.
+- `ADMIN_EMAILS`는 영구 관리자 목록이 아니다. 최초 관리자가 로그인/온보딩 후 `/admin/members`에서 본인을 관리자 권한으로 등록하면, 이후 실제 권한은 `admins` 테이블 기준으로 관리된다.
 - `NEXT_PUBLIC_SITE_URL`을 바꾸면 Next.js 빌드에 다시 반영해야 하므로 재배포가 필요하다.
 - 배포 도메인을 바꿀 때는 Supabase Auth의 Site URL / Redirect URLs도 같이 맞춘다.
 - Google OAuth Client ID/Secret은 이 앱의 env로 넣지 않는다. Supabase Auth > Providers > Google에 설정한다.

@@ -23,8 +23,9 @@ import type { ProfileRole, ProfileStatus } from "@/types/database";
 
 /**
  * 회원 관리 클라이언트 (T-301/302 / §6.7).
- * 검색 + 역할/상태 변경(정지/해제) + is_verified 배지 토글(비차단).
+ * 검색 + 역할/상태 변경(정지/해제) + is_verified 배지 토글(비차단) + 관리자 권한 토글.
  * 데이터 접근은 전부 /api/admin/members(서버, requireAdmin)로만 한다.
+ * 실제 관리자 권한은 profiles.role 이 아니라 admins 테이블로 관리한다.
  */
 
 interface Member {
@@ -34,6 +35,8 @@ interface Member {
   role: ProfileRole;
   status: ProfileStatus;
   is_verified: boolean;
+  is_admin: boolean;
+  is_self: boolean;
   organization: string | null;
   position: string | null;
   created_at: string;
@@ -44,7 +47,6 @@ const ROLE_OPTIONS: { value: ProfileRole; label: string }[] = [
   { value: "alumni", label: "동문" },
   { value: "faculty", label: "교직원" },
   { value: "partner", label: "파트너" },
-  { value: "admin", label: "관리자" },
 ];
 
 const STATUS_OPTIONS: { value: ProfileStatus; label: string }[] = [
@@ -123,6 +125,28 @@ export function MembersManager() {
     }
   }
 
+  async function setAdminAccess(profileId: string, next: boolean) {
+    setBusyId(profileId);
+    setActionError(null);
+    try {
+      const res = await fetch("/api/admin/admins", {
+        method: next ? "POST" : "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ profileId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError(json.error ?? "관리자 권한 변경에 실패했어요.");
+        return;
+      }
+      await load();
+    } catch {
+      setActionError("네트워크 오류가 발생했어요.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <form
@@ -184,6 +208,11 @@ export function MembersManager() {
                         인증
                       </Badge>
                     ) : null}
+                    {m.is_admin ? (
+                      <Badge variant="secondary" className="ml-2 align-middle">
+                        관리자
+                      </Badge>
+                    ) : null}
                   </CardTitle>
                   <Badge variant={STATUS_BADGE[m.status]}>
                     {STATUS_OPTIONS.find((s) => s.value === m.status)?.label ??
@@ -210,6 +239,11 @@ export function MembersManager() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        {m.role === "admin" ? (
+                          <SelectItem value="admin" disabled>
+                            관리자(레거시 역할)
+                          </SelectItem>
+                        ) : null}
                         {ROLE_OPTIONS.map((r) => (
                           <SelectItem key={r.value} value={r.value}>
                             {r.label}
@@ -239,6 +273,36 @@ export function MembersManager() {
                     </Select>
                   </div>
                 </div>
+
+                <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                  <div>
+                    <Label htmlFor={`admin-${m.id}`} className="text-sm">
+                      관리자 권한
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      관리자 페이지와 운영 API 접근 권한
+                    </p>
+                  </div>
+                  <Switch
+                    id={`admin-${m.id}`}
+                    checked={m.is_admin}
+                    disabled={
+                      busyId === m.id ||
+                      m.status !== "active" ||
+                      (m.is_self && m.is_admin)
+                    }
+                    onCheckedChange={(v) => void setAdminAccess(m.id, v)}
+                  />
+                </div>
+                {m.status !== "active" ? (
+                  <p className="-mt-2 px-1 text-xs text-muted-foreground">
+                    정지·탈퇴 회원에게는 관리자 권한을 부여할 수 없어요.
+                  </p>
+                ) : m.is_self && m.is_admin ? (
+                  <p className="-mt-2 px-1 text-xs text-muted-foreground">
+                    본인의 관리자 권한은 다른 관리자가 해제해야 해요.
+                  </p>
+                ) : null}
 
                 <div className="flex items-center justify-between rounded-md border px-3 py-2">
                   <div>

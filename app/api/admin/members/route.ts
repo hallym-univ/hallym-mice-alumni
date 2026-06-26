@@ -10,6 +10,7 @@ import type { ProfileRow } from "@/types/database";
  *
  * GET   /api/admin/members?q=검색어&status=active  → 회원 검색.
  * PATCH /api/admin/members                          → 역할/상태/배지 변경.
+ * 관리자 권한은 /api/admin/admins 에서 admins 테이블로 별도 관리한다.
  *
  * 주의(보안): role/status/is_verified 는 일반 "사용자 update" 경로에서는 화이트리스트로
  * 제거되지만, 이 경로는 관리자 전용(requireAdmin)이므로 의도적으로 변경을 허용한다.
@@ -18,7 +19,7 @@ import type { ProfileRow } from "@/types/database";
  */
 
 export const GET = withAuth(
-  async (req) => {
+  async (req, { me }) => {
     const url = new URL(req.url);
     const q = url.searchParams.get("q")?.trim() ?? "";
     const statusParam = url.searchParams.get("status");
@@ -27,7 +28,7 @@ export const GET = withAuth(
     let query = admin
       .from("profiles")
       .select(
-        "id, user_id, name, role, status, is_verified, organization, position, created_at",
+        "id, user_id, name, role, status, is_verified, organization, position, created_at, admins!admins_profile_id_fkey(id)",
       )
       .order("created_at", { ascending: false })
       .limit(50);
@@ -53,7 +54,26 @@ export const GET = withAuth(
       return Response.json({ error: "회원 목록 조회에 실패했어요." }, { status: 500 });
     }
 
-    return Response.json({ members: data ?? [] });
+    const members = ((data ?? []) as Array<
+      Pick<
+        ProfileRow,
+        | "id"
+        | "user_id"
+        | "name"
+        | "role"
+        | "status"
+        | "is_verified"
+        | "organization"
+        | "position"
+        | "created_at"
+      > & { admins: { id: string } | Array<{ id: string }> | null }
+    >).map(({ admins, ...member }) => ({
+      ...member,
+      is_admin: Array.isArray(admins) ? admins.length > 0 : admins != null,
+      is_self: member.id === me.profile.id,
+    }));
+
+    return Response.json({ members });
   },
   { role: "admin" },
 );
@@ -85,6 +105,12 @@ export const PATCH = withAuth(
       const parsed = profileRoleSchema.safeParse(role);
       if (!parsed.success) {
         return Response.json({ error: "잘못된 역할값이에요." }, { status: 400 });
+      }
+      if (parsed.data === "admin") {
+        return Response.json(
+          { error: "관리자 권한은 별도의 관리자 권한 토글로 변경해주세요." },
+          { status: 400 },
+        );
       }
       update.role = parsed.data;
       detail.role = parsed.data;

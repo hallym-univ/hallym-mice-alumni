@@ -13,7 +13,8 @@ import type { ProfileRow } from "@/types/database";
  *  Role:
  *   - 'any'    : 로그인만 요구(status 무관). 거의 쓰지 않는다.
  *   - 'member' : 로그인 + profiles.status === 'active'. (가입자 = 풀 사용)
- *   - 'admin'  : member 조건 + (ADMIN_EMAILS 부트스트랩 || admins 테이블).
+ *   - 'admin'  : member 조건 + admins 테이블.
+ *                단, admins 테이블이 비어 있을 때만 ADMIN_EMAILS 를 최초 부트스트랩으로 허용.
  *
  *  member = 세션 있음 + profiles.status === 'active' (suspended/withdrawn 차단).
  *  verified 게이트는 존재하지 않는다(is_verified 는 비차단 배지일 뿐).
@@ -92,9 +93,19 @@ const loadAuth = cache(async (): Promise<AuthContext | null> => {
   const env = getServerEnv();
   // 객체/배열/null 어느 형태든 "행이 실제로 존재할 때만" 관리자로 판정(런타임 정규화).
   const hasAdminRow = Array.isArray(admins) ? admins.length > 0 : admins != null;
-  const isAdmin =
-    (email !== null && env.adminEmails.includes(email.toLowerCase())) ||
-    hasAdminRow;
+  let isBootstrapAdmin = false;
+
+  if (!hasAdminRow && email !== null && env.adminEmails.includes(email.toLowerCase())) {
+    const { count, error: countError } = await admin
+      .from("admins")
+      .select("id", { count: "exact", head: true });
+    if (countError) {
+      throw new AuthError(403, "관리자 권한 조회에 실패했습니다.");
+    }
+    isBootstrapAdmin = (count ?? 0) === 0;
+  }
+
+  const isAdmin = hasAdminRow || isBootstrapAdmin;
 
   return { userId: user.id, email, profile: profile as ProfileRow, isAdmin };
 });
