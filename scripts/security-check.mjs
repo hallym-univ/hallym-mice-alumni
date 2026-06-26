@@ -176,6 +176,22 @@ function checkSupabaseCookiePolicy() {
   }
 }
 
+function checkApiMutationBodyGuard() {
+  const source = read("lib/guards/withAuth.ts");
+  for (const fragment of [
+    "MAX_MUTATION_BODY_BYTES",
+    "content-length",
+    "isJsonContentType",
+    "jsonError(413",
+    "jsonError(415",
+    "rejectInvalidMutationBody(req)",
+  ]) {
+    if (!source.includes(fragment)) {
+      addFailure(`lib/guards/withAuth.ts: missing mutation request body guard fragment ${fragment}`);
+    }
+  }
+}
+
 function checkExternalLinks(files) {
   for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
     const source = read(rel);
@@ -318,6 +334,7 @@ checkSensitiveLibsAreServerOnly(files);
 checkApiRoutes();
 checkSecurityHeaders();
 checkSupabaseCookiePolicy();
+checkApiMutationBodyGuard();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkEnvFiles();

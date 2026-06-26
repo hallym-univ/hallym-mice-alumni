@@ -52,6 +52,7 @@ function jsonError(status: number, message: string): Response {
 }
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const MAX_MUTATION_BODY_BYTES = 1024 * 1024;
 
 /**
  * 브라우저 쿠키 기반 API의 공통 CSRF 방어.
@@ -79,6 +80,34 @@ function isBlockedCrossSiteMutation(req: Request): boolean {
   } catch {
     return true;
   }
+}
+
+function rejectInvalidMutationBody(req: Request): Response | null {
+  if (!MUTATING_METHODS.has(req.method.toUpperCase())) return null;
+
+  const contentLengthHeader = req.headers.get("content-length");
+  if (!contentLengthHeader) return null;
+
+  const bodyBytes = Number(contentLengthHeader);
+  if (!Number.isSafeInteger(bodyBytes) || bodyBytes < 0) {
+    return jsonError(400, "요청 본문 크기가 올바르지 않습니다.");
+  }
+  if (bodyBytes > MAX_MUTATION_BODY_BYTES) {
+    return jsonError(413, "요청 본문이 너무 큽니다.");
+  }
+  if (bodyBytes === 0) return null;
+
+  if (!isJsonContentType(req.headers.get("content-type"))) {
+    return jsonError(415, "JSON 요청만 처리할 수 있어요.");
+  }
+
+  return null;
+}
+
+function isJsonContentType(contentType: string | null): boolean {
+  if (!contentType) return false;
+  const mediaType = contentType.split(";")[0]?.trim().toLowerCase();
+  return mediaType === "application/json" || Boolean(mediaType?.endsWith("+json"));
 }
 
 /**
@@ -192,6 +221,9 @@ export function withAuth<Ctx = Record<string, never>>(
     if (isBlockedCrossSiteMutation(req)) {
       return jsonError(403, "허용되지 않은 요청입니다.");
     }
+
+    const bodyError = rejectInvalidMutationBody(req);
+    if (bodyError) return bodyError;
 
     let me: AuthContext;
     try {

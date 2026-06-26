@@ -77,6 +77,24 @@ test("cross-site mutation is rejected before auth lookup", async ({ request }) =
   await expectJson(response, { error: "허용되지 않은 요청입니다." });
 });
 
+test("mutating APIs reject invalid request bodies before auth lookup", async ({ request }) => {
+  const unsupported = await request.post("/api/events", {
+    data: "eventType=profile_view",
+    headers: { "content-type": "text/plain" },
+  });
+  expect(unsupported.status()).toBe(415);
+  expect(unsupported.headers()["cache-control"]).toContain("no-store");
+  await expectJson(unsupported, { error: "JSON 요청만 처리할 수 있어요." });
+
+  const oversized = await request.post("/api/events", {
+    data: `"${"x".repeat(1024 * 1024)}"`,
+    headers: { "content-type": "application/json" },
+  });
+  expect(oversized.status()).toBe(413);
+  expect(oversized.headers()["cache-control"]).toContain("no-store");
+  await expectJson(oversized, { error: "요청 본문이 너무 큽니다." });
+});
+
 async function expectJson(response: { json: () => Promise<unknown> }, expected: unknown) {
   await expect(response.json()).resolves.toEqual(expected);
 }
