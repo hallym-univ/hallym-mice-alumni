@@ -640,7 +640,7 @@ export const postTypeSchema = z.enum(["story", "question", "project", "event", "
 
 export const postInputSchema = z
   .object({
-    title: z.string().trim().min(1, "제목을 입력해주세요.").max(160),
+    title: z.string().trim().max(160).optional(),
     body: z.string().trim().max(3000).default(""),
     post_type: postTypeSchema.default("story"),
     external_url: z

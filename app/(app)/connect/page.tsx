@@ -1,14 +1,11 @@
 import Link from "next/link";
 
-import {
-  BriefcaseBusiness,
-  ExternalLink,
-  FileText,
-  Images,
-  Link2,
-  Search,
-} from "lucide-react";
+import { Search } from "lucide-react";
 
+import {
+  AttachedContentCard,
+  type AttachedContentPreview,
+} from "@/components/connect/AttachedContentCard";
 import { CommentsPanel } from "@/components/connect/CommentsPanel";
 import { PostComposer, type ImportableContent } from "@/components/connect/PostComposer";
 import { ReactionBar } from "@/components/connect/ReactionBar";
@@ -23,12 +20,6 @@ import { listPublishedArticles } from "@/lib/content/public";
 import { listPublishedPosts, type PostListItem } from "@/lib/connect/queries";
 import { listPublishedJobs } from "@/lib/jobs/queries";
 import { formatDate, JOB_TYPE_LABEL, POST_TYPE_LABEL } from "@/lib/labels";
-
-interface AttachmentPreview {
-  href: string;
-  label: string;
-  title: string;
-}
 
 export default async function ConnectPage({
   searchParams,
@@ -48,7 +39,12 @@ export default async function ConnectPage({
   const attachmentMap = new Map(
     allImportableItems.map((item) => [
       item.href,
-      { href: item.href, label: item.kindLabel, title: item.title },
+      {
+        href: item.href,
+        kindLabel: item.kindLabel,
+        title: item.title,
+        description: item.body,
+      },
     ]),
   );
   const posts = q
@@ -148,14 +144,15 @@ function buildImportableItems(
 function matchesPost(
   post: PostListItem,
   q: string,
-  attachment: AttachmentPreview | null,
+  attachment: AttachedContentPreview | null,
 ) {
   return matchesText(
     [
       post.title,
       post.body,
       attachment?.title,
-      attachment?.label,
+      attachment?.kindLabel,
+      attachment?.description,
       post.author?.name,
       post.author?.organization,
       post.author?.position,
@@ -175,7 +172,7 @@ function PostFeedCard({
   attachment,
 }: {
   post: PostListItem;
-  attachment: AttachmentPreview | null;
+  attachment: AttachedContentPreview | null;
 }) {
   const shareUrl = `/connect?post=${post.id}`;
 
@@ -235,58 +232,21 @@ function PostFeedCard({
   );
 }
 
-function PostAttachment({ attachment }: { attachment: AttachmentPreview }) {
-  const { href, label, title } = attachment;
-  const isInternal = href.startsWith("/");
-  const Icon = getAttachmentIcon(href);
-  const content = (
-    <div className="inline-flex max-w-full items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-2 text-left transition-colors hover:bg-accent/40">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <div className="min-w-0">
-        <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-          <Link2 className="h-3 w-3" />
-          참조 · {label}
-        </p>
-        <p className="max-w-[15rem] truncate text-xs font-medium leading-snug sm:max-w-[24rem] sm:text-sm">
-          {title}
-        </p>
-      </div>
-      {isInternal ? null : (
-        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      )}
-    </div>
-  );
-
-  return isInternal ? (
-    <Link href={href} className="block" aria-label={`${label} 열기: ${title}`}>
-      {content}
-    </Link>
-  ) : (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block"
-      aria-label={`${label} 열기: ${title}`}
-    >
-      {content}
-    </a>
-  );
+function PostAttachment({ attachment }: { attachment: AttachedContentPreview }) {
+  return <AttachedContentCard item={attachment} className="bg-background" />;
 }
 
 function resolveAttachment(
   href: string | null,
-  attachmentMap: Map<string, AttachmentPreview>,
-): AttachmentPreview | null {
+  attachmentMap: Map<string, AttachedContentPreview>,
+): AttachedContentPreview | null {
   if (!href) return null;
   const known = attachmentMap.get(href);
   if (known) return known;
 
   return {
     href,
-    label: getAttachmentLabel(href),
+    kindLabel: getAttachmentLabel(href),
     title: getAttachmentFallbackTitle(href),
   };
 }
@@ -306,11 +266,4 @@ function getAttachmentLabel(href: string) {
   if (href.startsWith("/jobs/")) return "기회";
   if (href.startsWith("/albums/")) return "행사 기록";
   return "링크";
-}
-
-function getAttachmentIcon(href: string) {
-  if (href.startsWith("/content/")) return FileText;
-  if (href.startsWith("/jobs/")) return BriefcaseBusiness;
-  if (href.startsWith("/albums/")) return Images;
-  return Link2;
 }

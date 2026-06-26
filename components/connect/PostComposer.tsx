@@ -3,9 +3,10 @@
 import { useState } from "react";
 
 import { useRouter } from "next/navigation";
-import { Link2, Paperclip, Send, X } from "lucide-react";
+import { Send, X } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AttachedContentCard } from "@/components/connect/AttachedContentCard";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -23,7 +24,7 @@ export interface ImportableContent {
   label: string;
   kindLabel: string;
   title: string;
-  body: string;
+  body: string | null;
   postType: PostType;
   href: string;
 }
@@ -55,10 +56,6 @@ export function PostComposer({
 
   async function submit() {
     const normalizedBody = body.trim();
-    const normalizedTitle = deriveTitle(
-      normalizedBody,
-      selectedContent ? `${selectedContent.kindLabel} 공유` : "새 동문 소식",
-    );
 
     setBusy(true);
     setError(null);
@@ -67,7 +64,6 @@ export function PostComposer({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          title: normalizedTitle,
           body: normalizedBody,
           post_type: postType,
           external_url: selectedContent?.href ?? null,
@@ -96,7 +92,7 @@ export function PostComposer({
         onChange={(e) => setBody(e.target.value)}
         placeholder={
           selectedContent
-            ? "첨부한 콘텐츠와 함께 전할 말을 적어보세요. (선택)"
+            ? "전할 말을 덧붙여보세요. (선택)"
             : "동문에게 공유할 경험, 질문, 프로젝트 모집, 행사 소식을 적어보세요."
         }
         rows={selectedContent ? 3 : 4}
@@ -104,32 +100,27 @@ export function PostComposer({
       />
 
       {selectedContent ? (
-        <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-2.5 py-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground">
-              <Paperclip className="h-3.5 w-3.5" />
-            </span>
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                <Link2 className="h-3 w-3" />
-                참조 · {selectedContent.kindLabel}
-              </p>
-              <p className="truncate text-xs font-medium leading-snug sm:text-sm">
-                {selectedContent.title}
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0"
-            onClick={() => setSelectedContentId("none")}
-            aria-label="첨부 제거"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        <AttachedContentCard
+          item={{
+            href: selectedContent.href,
+            kindLabel: selectedContent.kindLabel,
+            title: selectedContent.title,
+            description: selectedContent.body,
+          }}
+          className="bg-background"
+          action={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setSelectedContentId("none")}
+              aria-label="첨부 제거"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          }
+        />
       ) : null}
 
       <div className="flex items-center gap-2">
@@ -148,7 +139,7 @@ export function PostComposer({
         <Select value={selectedContentId} onValueChange={applyInternalContent}>
           <SelectTrigger className="h-8 flex-1 text-xs">
             <span className="truncate">
-              {selectedContent ? `참조 추가됨 · ${selectedContent.kindLabel}` : "내부 콘텐츠 참조"}
+              {selectedContent ? `${selectedContent.kindLabel} 첨부됨` : "콘텐츠 첨부"}
             </span>
           </SelectTrigger>
           <SelectContent>
@@ -183,9 +174,4 @@ export function PostComposer({
       ) : null}
     </div>
   );
-}
-
-function deriveTitle(body: string, fallback: string) {
-  const firstLine = body.split("\n").find((line) => line.trim())?.trim() ?? fallback;
-  return firstLine.length > 60 ? `${firstLine.slice(0, 57)}...` : firstLine;
 }

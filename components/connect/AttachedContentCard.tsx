@@ -1,0 +1,95 @@
+import type { ReactNode } from "react";
+
+import Link from "next/link";
+
+import {
+  BriefcaseBusiness,
+  ExternalLink,
+  FileText,
+  Images,
+  Link2,
+} from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+export interface AttachedContentPreview {
+  href: string;
+  kindLabel: string;
+  title: string;
+  description?: string | null;
+}
+
+export function AttachedContentCard({
+  item,
+  action,
+  className,
+}: {
+  item: AttachedContentPreview;
+  action?: ReactNode;
+  className?: string;
+}) {
+  const isInternal = item.href.startsWith("/");
+  const Icon = getAttachmentIcon(item.href);
+  const description = item.description?.trim();
+  const content = (
+    <Card
+      className={cn(
+        "flex items-center gap-3 p-3 transition-colors",
+        isInternal ? "hover:bg-accent/40" : "hover:bg-accent/30",
+        className,
+      )}
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
+            {item.kindLabel}
+          </Badge>
+          <span className="text-[11px] text-muted-foreground">첨부</span>
+        </div>
+        <p className="mt-1 line-clamp-1 text-sm font-medium leading-snug">
+          {item.title}
+        </p>
+        {description ? (
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+            {description}
+          </p>
+        ) : null}
+      </div>
+      {action ? (
+        <div className="shrink-0">{action}</div>
+      ) : isInternal ? null : (
+        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      )}
+    </Card>
+  );
+
+  if (action) return content;
+
+  return isInternal ? (
+    <Link href={item.href} className="block" aria-label={`${item.kindLabel} 열기`}>
+      {content}
+    </Link>
+  ) : (
+    <a
+      href={item.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block"
+      aria-label={`${item.kindLabel} 열기`}
+    >
+      {content}
+    </a>
+  );
+}
+
+function getAttachmentIcon(href: string) {
+  if (href.startsWith("/content/")) return FileText;
+  if (href.startsWith("/jobs/")) return BriefcaseBusiness;
+  if (href.startsWith("/albums/")) return Images;
+  return Link2;
+}

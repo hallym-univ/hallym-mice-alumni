@@ -71,7 +71,7 @@ export const POST = withAuth(
       .from("posts")
       .insert({
         author_id: me.profile.id,
-        title: input.title,
+        title: derivePostTitle(input.body, input.external_url),
         body: input.body,
         post_type: input.post_type,
         external_url: input.external_url ?? null,
@@ -106,3 +106,18 @@ export const POST = withAuth(
   },
   { role: "member" },
 );
+
+function derivePostTitle(body: string, externalUrl: string | null | undefined) {
+  if (externalUrl) return `${attachmentLabel(externalUrl)} 공유`;
+
+  const firstLine = body.split("\n").find((line) => line.trim())?.trim();
+  const fallback = firstLine || "새 동문 소식";
+  return fallback.length > 60 ? `${fallback.slice(0, 57)}...` : fallback;
+}
+
+function attachmentLabel(url: string) {
+  if (url.startsWith("/content/")) return "동문 이야기";
+  if (url.startsWith("/jobs/")) return "기회";
+  if (url.startsWith("/albums/")) return "행사 기록";
+  return "링크";
+}
