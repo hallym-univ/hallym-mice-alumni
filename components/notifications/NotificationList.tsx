@@ -15,7 +15,7 @@ import { LoadingSkeleton } from "@/components/common/LoadingSkeleton";
 import { EMPTY } from "@/lib/messages";
 import { formatDate } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import type { NotificationRow } from "@/types/database";
+import type { NotificationListItem } from "@/lib/notifications/types";
 
 /**
  * 알림 인박스 (§6.8). /api/notifications 로만 접근(서버, requireMember).
@@ -28,23 +28,23 @@ const TYPE_LABEL: Record<string, string> = {
   job_published: "공고가 게시됐어요",
 };
 
-function titleOf(n: NotificationRow): string {
+function titleOf(n: NotificationListItem): string {
   const t = n.payload?.title;
   if (typeof t === "string" && t) return t;
   return TYPE_LABEL[n.type] ?? "알림";
 }
-function messageOf(n: NotificationRow): string | null {
+function messageOf(n: NotificationListItem): string | null {
   const m = n.payload?.message;
   return typeof m === "string" && m ? m : null;
 }
-function linkOf(n: NotificationRow): string | null {
+function linkOf(n: NotificationListItem): string | null {
   const l = n.payload?.link;
   return typeof l === "string" && l.startsWith("/") ? l : null;
 }
 
 export function NotificationList() {
   const router = useRouter();
-  const [items, setItems] = useState<NotificationRow[]>([]);
+  const [items, setItems] = useState<NotificationListItem[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [busy, setBusy] = useState(false);
 
@@ -86,7 +86,7 @@ export function NotificationList() {
     }
   }
 
-  async function markOne(n: NotificationRow) {
+  async function markOne(n: NotificationListItem) {
     if (n.read_at) return;
     const now = new Date().toISOString();
     setItems((prev) =>

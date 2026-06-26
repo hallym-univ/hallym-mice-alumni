@@ -2,7 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AuthContext } from "@/lib/guards/withAuth";
-import type { NotificationRow } from "@/types/database";
+import type { NotificationListItem } from "@/lib/notifications/types";
 
 /**
  * 알림 인박스 서버 조회 (§6.8). in_app 채널만(이메일은 Resend 발송 로그).
@@ -11,16 +11,16 @@ import type { NotificationRow } from "@/types/database";
 
 export async function listMyNotifications(
   me: AuthContext,
-): Promise<NotificationRow[]> {
+): Promise<NotificationListItem[]> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("notifications")
-    .select("*")
+    .select("id,type,payload,read_at,created_at")
     .eq("profile_id", me.profile.id)
     .eq("channel", "in_app")
     .order("created_at", { ascending: false })
     .limit(100);
-  return (data ?? []) as NotificationRow[];
+  return (data ?? []) as NotificationListItem[];
 }
 
 export async function unreadCount(me: AuthContext): Promise<number> {

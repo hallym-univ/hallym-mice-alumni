@@ -531,6 +531,20 @@ function checkDataMinimization() {
   if (contentPublic.includes('.select("*")')) {
     addFailure("lib/content/public.ts: public content queries must not select all columns");
   }
+
+  const notificationQueries = read("lib/notifications/queries.ts");
+  for (const fragment of [
+    "NotificationListItem",
+    ".select(\"id,type,payload,read_at,created_at\")",
+    ".limit(100)",
+  ]) {
+    if (!notificationQueries.includes(fragment)) {
+      addFailure(`lib/notifications/queries.ts: missing notification column policy fragment ${fragment}`);
+    }
+  }
+  if (notificationQueries.includes('.select("*")')) {
+    addFailure("lib/notifications/queries.ts: notification inbox must not select all columns");
+  }
 }
 
 function checkListQueryParamValidation() {
