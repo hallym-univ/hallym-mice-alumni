@@ -20,6 +20,7 @@ export type EventType =
   // Phase 2/3
   | "post_create"
   | "comment_create"
+  | "job_create"
   | "profile_upload_url_request"
   | "asset_upload_url_request"
   | "remote_image_import"

@@ -3,6 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getInitialJobStatus } from "@/lib/jobs/policy";
 import { jobInputSchema, jobListQuerySchema } from "@/lib/validators";
 import { listPublishedJobs } from "@/lib/jobs/queries";
+import { makeCohortHash, recordEvent } from "@/lib/analytics/events";
+import { checkDailyLimit, RateLimitUnavailableError } from "@/lib/rate-limit";
+
+const JOB_CREATE_DAILY_LIMIT = 10;
 
 /**
  * GET  /api/jobs — 게시중 공고 목록/검색 (§6.4). 회원(active)만.
@@ -55,6 +59,29 @@ export const POST = withAuth(
       );
     }
     const input = parsed.data;
+    const cohortHash = makeCohortHash(me.userId);
+
+    try {
+      const rate = await checkDailyLimit({
+        cohortHash,
+        eventType: "job_create",
+        limit: JOB_CREATE_DAILY_LIMIT,
+      });
+      if (!rate.ok) {
+        return Response.json(
+          { error: "오늘 등록 가능한 기회 수를 모두 사용했어요." },
+          { status: 429 },
+        );
+      }
+    } catch (err) {
+      if (err instanceof RateLimitUnavailableError) {
+        return Response.json(
+          { error: "요청 제한 확인에 실패했어요. 잠시 후 다시 시도해주세요." },
+          { status: 503 },
+        );
+      }
+      throw err;
+    }
 
     const admin = createAdminClient();
     const { data, error } = await admin
@@ -85,6 +112,17 @@ export const POST = withAuth(
       await admin
         .from("job_tags")
         .insert(input.tag_ids.map((tag_id) => ({ job_id: data.id, tag_id })));
+    }
+
+    try {
+      await recordEvent({
+        eventType: "job_create",
+        cohortHash,
+        profileId: me.profile.id,
+        targetId: data.id,
+      });
+    } catch (e) {
+      console.error("[jobs] event 기록 실패", e);
     }
 
     return Response.json({ id: data.id }, { status: 201 });

@@ -261,6 +261,7 @@ function checkHighRiskMutationRateLimits() {
     ["app/api/events/route.ts", ["checkDailyLimit", "CLIENT_EVENT_DAILY_LIMIT", "CLIENT_EVENT_TARGET_DAILY_LIMIT"]],
     ["app/api/posts/route.ts", ["checkDailyLimit", "post_create"]],
     ["app/api/posts/[id]/comments/route.ts", ["checkDailyLimit", "comment_create"]],
+    ["app/api/jobs/route.ts", ["checkDailyLimit", "JOB_CREATE_DAILY_LIMIT", "job_create"]],
     ["app/api/uploads/route.ts", ["checkDailyLimit", "profile_upload_url_request", "asset_upload_url_request"]],
     ["app/api/uploads/from-url/route.ts", ["checkDailyLimit", "remote_image_import"]],
     ["app/api/proposal/route.ts", ["checkDailyLimit", "proposal_email_click"]],
@@ -438,6 +439,7 @@ function checkClientWritableEventTypes() {
   for (const serverOnlyEvent of [
     "proposal_email_click",
     "job_bookmark",
+    "job_create",
     "post_create",
     "comment_create",
     "profile_upload_url_request",
