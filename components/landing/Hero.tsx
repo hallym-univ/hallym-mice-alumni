@@ -4,6 +4,7 @@ import { ArrowRight, ArrowDown } from "lucide-react";
 
 import { GridBackdrop } from "./GridBackdrop";
 import { Grain } from "./Grain";
+import { LightCursorGlow } from "./LightCursorGlow";
 import { MeshBackground } from "./MeshBackground";
 
 /**
@@ -13,7 +14,8 @@ import { MeshBackground } from "./MeshBackground";
 export function Hero() {
   return (
     <section className="relative flex min-h-screen flex-col justify-center overflow-hidden px-6 py-24">
-      <MeshBackground />
+      <MeshBackground className="landing-mesh-background" />
+      <LightCursorGlow />
       <GridBackdrop id="grid-hero" className="absolute inset-0 text-white/[0.04]" />
       <Grain />
 

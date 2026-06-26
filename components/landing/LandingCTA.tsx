@@ -7,8 +7,11 @@ import { GridBackdrop } from "./GridBackdrop";
 /** 마지막 CTA — 풀블리드 코발트 밴드 + 거대 타이포. */
 export function LandingCTA() {
   return (
-    <section className="relative overflow-hidden bg-primary px-6 py-32 text-primary-foreground">
-      <GridBackdrop id="grid-cta" className="absolute inset-0 text-white/10" />
+    <section className="landing-cta-section relative overflow-hidden bg-primary px-6 py-32 text-primary-foreground">
+      <GridBackdrop
+        id="grid-cta"
+        className="landing-cta-grid absolute inset-0 text-white/10"
+      />
       <div className="relative mx-auto max-w-screen-lg text-center">
         <h2 className="mx-auto max-w-3xl text-[clamp(2.25rem,6vw,4.5rem)] font-bold leading-[1.02] tracking-tight">
           동문은 가장 가까운
