@@ -830,6 +830,41 @@ function checkConnectCommentPreviewLimit() {
   }
 }
 
+function checkConnectEngagementAggregation() {
+  const migration = read("supabase/migrations/0010_post_engagement_counts.sql");
+  for (const fragment of [
+    "get_post_engagement_counts",
+    "returns table",
+    "post_likes",
+    "comments",
+    "count(*)::integer",
+    "where c.status = 'published'",
+    "revoke all on function public.get_post_engagement_counts(uuid[]) from public",
+    "revoke all on function public.get_post_engagement_counts(uuid[]) from anon",
+    "revoke all on function public.get_post_engagement_counts(uuid[]) from authenticated",
+    "grant execute on function public.get_post_engagement_counts(uuid[]) to service_role",
+  ]) {
+    if (!migration.includes(fragment)) {
+      addFailure(`supabase/migrations/0010_post_engagement_counts.sql: missing engagement RPC fragment ${fragment}`);
+    }
+  }
+
+  const queries = read("lib/connect/queries.ts");
+  for (const fragment of [
+    "fetchEngagementCounts(postIds)",
+    "EngagementCountRpc",
+    "runEngagementRpc",
+    '"get_post_engagement_counts"',
+    "fetchEngagementCountsByRows(postIds)",
+    "engagement.get(post.id)?.like_count",
+    "engagement.get(post.id)?.comment_count",
+  ]) {
+    if (!queries.includes(fragment)) {
+      addFailure(`lib/connect/queries.ts: missing engagement aggregation fragment ${fragment}`);
+    }
+  }
+}
+
 function checkExternalLinks(files) {
   for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
     const source = read(rel);
@@ -1078,6 +1113,7 @@ checkAdminQueryParamValidation();
 checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
 checkConnectCommentPreviewLimit();
+checkConnectEngagementAggregation();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkMarkdownUrlPolicy();

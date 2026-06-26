@@ -34,6 +34,23 @@ export interface CommentListItem {
   author: ConnectAuthor | null;
 }
 
+interface PostEngagementCounts {
+  like_count: number;
+  comment_count: number;
+}
+
+interface PostEngagementCountRow extends PostEngagementCounts {
+  post_id: string;
+}
+
+type EngagementCountRpc = (
+  fn: "get_post_engagement_counts",
+  args: { post_ids: string[] },
+) => Promise<{
+  data: PostEngagementCountRow[] | null;
+  error: { message: string } | null;
+}>;
+
 const POST_SELECT =
   "id,author_id,title,body,post_type,external_url,status,created_at,updated_at";
 const MAX_COMMENT_PREVIEW_LIMIT = 20;
@@ -110,11 +127,10 @@ async function shapePosts(
   const postIds = posts.map((post) => post.id);
   const authorIds = posts.map((post) => post.author_id);
 
-  const [authors, tags, likes, comments, liked] = await Promise.all([
+  const [authors, tags, engagement, liked] = await Promise.all([
     fetchAuthors(authorIds),
     fetchPostTags(postIds),
-    fetchCounts("post_likes", postIds),
-    fetchCounts("comments", postIds),
+    fetchEngagementCounts(postIds),
     fetchLikedSet(me.profile.id, postIds),
   ]);
 
@@ -127,8 +143,8 @@ async function shapePosts(
     created_at: post.created_at,
     author: authors.get(post.author_id) ?? null,
     tags: tags.get(post.id) ?? [],
-    like_count: likes.get(post.id) ?? 0,
-    comment_count: comments.get(post.id) ?? 0,
+    like_count: engagement.get(post.id)?.like_count ?? 0,
+    comment_count: engagement.get(post.id)?.comment_count ?? 0,
     is_liked: liked.has(post.id),
   }));
 }
@@ -182,7 +198,50 @@ async function fetchPostTags(postIds: string[]): Promise<Map<string, TagRow[]>> 
   return map;
 }
 
-async function fetchCounts(
+async function fetchEngagementCounts(
+  postIds: string[],
+): Promise<Map<string, PostEngagementCounts>> {
+  const map = new Map<string, PostEngagementCounts>();
+  if (postIds.length === 0) return map;
+
+  const admin = createAdminClient();
+  const runEngagementRpc = admin.rpc as unknown as EngagementCountRpc;
+  const { data, error } = await runEngagementRpc("get_post_engagement_counts", {
+    post_ids: postIds,
+  });
+
+  if (error) {
+    console.warn("[posts] engagement RPC unavailable; falling back to row counts");
+    return fetchEngagementCountsByRows(postIds);
+  }
+
+  for (const row of data ?? []) {
+    map.set(row.post_id, {
+      like_count: row.like_count ?? 0,
+      comment_count: row.comment_count ?? 0,
+    });
+  }
+  return map;
+}
+
+async function fetchEngagementCountsByRows(
+  postIds: string[],
+): Promise<Map<string, PostEngagementCounts>> {
+  const [likes, comments] = await Promise.all([
+    fetchCountRows("post_likes", postIds),
+    fetchCountRows("comments", postIds),
+  ]);
+  const map = new Map<string, PostEngagementCounts>();
+  for (const postId of postIds) {
+    map.set(postId, {
+      like_count: likes.get(postId) ?? 0,
+      comment_count: comments.get(postId) ?? 0,
+    });
+  }
+  return map;
+}
+
+async function fetchCountRows(
   table: "post_likes" | "comments",
   postIds: string[],
 ): Promise<Map<string, number>> {
