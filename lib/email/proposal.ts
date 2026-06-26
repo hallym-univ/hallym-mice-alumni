@@ -2,7 +2,7 @@ import "server-only";
 
 import { Resend } from "resend";
 
-import { getServerEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**

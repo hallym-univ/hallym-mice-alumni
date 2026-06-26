@@ -4,7 +4,7 @@ import { cache } from "react";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
-import { getServerEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 import type { ProfileRow } from "@/types/database";
 
 /**

@@ -7,7 +7,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-import { getServerEnv, publicEnv } from "@/lib/env";
+import { publicEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 
 /**
  * Cloudflare R2 어댑터 (§9.2) — 모든 이미지 I/O의 단일 경로.
