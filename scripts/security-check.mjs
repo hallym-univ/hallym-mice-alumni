@@ -323,6 +323,55 @@ function checkDatabaseRlsPolicyInvariants() {
   }
 }
 
+function checkSetNullForeignKeyNullability() {
+  const migrations = readSqlMigrations();
+  const combined = migrations.map(({ source }) => source).join("\n");
+  const correctedColumns = new Map([
+    ["reports.reporter_profile_id", "ReportRow"],
+    ["admin_logs.admin_profile_id", "AdminLogRow"],
+    ["jobs.author_id", "JobRow"],
+    ["articles.author_id", "ArticleRow"],
+  ]);
+
+  const createTableRe =
+    /\bcreate\s+table(?:\s+if\s+not\s+exists)?\s+(?:public\.)?([a-zA-Z_][\w]*)\s*\(([\s\S]*?)\);/gi;
+  let match;
+  while ((match = createTableRe.exec(combined))) {
+    const [, table, body] = match;
+    for (const line of body.split(/\r?\n/)) {
+      const columnMatch = line.match(
+        /^\s*([a-zA-Z_][\w]*)\s+uuid\s+not\s+null\s+references\s+profiles\(id\)\s+on\s+delete\s+set\s+null\b/i,
+      );
+      if (!columnMatch) continue;
+
+      const key = `${table}.${columnMatch[1]}`;
+      if (!correctedColumns.has(key)) {
+        addFailure(`${key}: ON DELETE SET NULL foreign key cannot be NOT NULL`);
+      }
+    }
+  }
+
+  const types = read("types/database.ts");
+  for (const [key, rowType] of correctedColumns) {
+    const [table, column] = key.split(".");
+    const dropNotNullRe = new RegExp(
+      `\\balter\\s+table\\s+(?:public\\.)?${table}\\s+alter\\s+column\\s+${column}\\s+drop\\s+not\\s+null\\b`,
+      "i",
+    );
+    if (!dropNotNullRe.test(combined)) {
+      addFailure(`supabase/migrations: ${key} must drop NOT NULL to support ON DELETE SET NULL`);
+    }
+
+    const rowTypeRe = new RegExp(
+      `export\\s+type\\s+${rowType}\\s*=\\s*\\{[\\s\\S]*?\\b${column}:\\s*string\\s*\\|\\s*null;[\\s\\S]*?\\n\\}`,
+      "m",
+    );
+    if (!rowTypeRe.test(types)) {
+      addFailure(`types/database.ts: ${rowType}.${column} must be typed as string | null`);
+    }
+  }
+}
+
 function checkHighRiskMutationRateLimits() {
   const expectations = new Map([
     ["app/api/events/route.ts", ["checkDailyLimit", "CLIENT_EVENT_DAILY_LIMIT", "CLIENT_EVENT_TARGET_DAILY_LIMIT"]],
@@ -1196,6 +1245,7 @@ checkAuthRedirectPolicy();
 checkSupabaseCookiePolicy();
 checkApiMutationBodyGuard();
 checkDatabaseRlsPolicyInvariants();
+checkSetNullForeignKeyNullability();
 checkHighRiskMutationRateLimits();
 checkUploadSigningPolicy();
 checkRemoteImageImportPolicy();
