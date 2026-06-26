@@ -414,29 +414,46 @@ export type JobInput = z.infer<typeof jobInputSchema>;
 
 export const postTypeSchema = z.enum(["story", "question", "project", "event", "link"]);
 
-export const postInputSchema = z.object({
-  title: z.string().trim().min(1, "제목을 입력해주세요.").max(160),
-  body: z.string().trim().min(1, "내용을 입력해주세요.").max(3000),
-  post_type: postTypeSchema.default("story"),
-  external_url: z
-    .string()
-    .trim()
-    .optional()
-    .nullable()
-    .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null))
-    .refine(
-      (v) => {
-        if (v === null || v === undefined) return true;
-        try {
-          return new URL(v).protocol === "https:";
-        } catch {
-          return false;
-        }
-      },
-      { message: "외부 링크는 https 주소만 등록할 수 있어요." },
-    ),
-  tag_ids: z.array(z.string().uuid()).max(10).optional(),
-});
+export const postInputSchema = z
+  .object({
+    title: z.string().trim().min(1, "제목을 입력해주세요.").max(160),
+    body: z.string().trim().max(3000).default(""),
+    post_type: postTypeSchema.default("story"),
+    external_url: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null))
+      .refine((v) => v === null || v === undefined || isAllowedPostUrl(v), {
+        message: "링크는 내부 콘텐츠 경로 또는 https 주소만 등록할 수 있어요.",
+      }),
+    tag_ids: z.array(z.string().uuid()).max(10).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.body && !value.external_url) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "내용이나 첨부 콘텐츠가 필요해요.",
+        path: ["body"],
+      });
+    }
+  });
+
+function isAllowedPostUrl(value: string): boolean {
+  if (
+    /^\/(?:content|jobs|albums)\/[0-9a-fA-F-]{36}$/.test(value) ||
+    /^\/connect(?:\?.*)?$/.test(value)
+  ) {
+    return true;
+  }
+
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 export const commentInputSchema = z.object({
   body: z.string().trim().min(1, "댓글을 입력해주세요.").max(1000),

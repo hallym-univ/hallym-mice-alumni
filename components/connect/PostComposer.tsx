@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { useRouter } from "next/navigation";
-import { FilePlus2, Send } from "lucide-react";
+import { Link2, Send, X } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -33,23 +33,28 @@ export function PostComposer({
   importableItems?: ImportableContent[];
 }) {
   const router = useRouter();
-  const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [postType, setPostType] = useState<PostType>("story");
+  const [selectedContentId, setSelectedContentId] = useState("none");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedContent =
+    importableItems.find((candidate) => candidate.id === selectedContentId) ?? null;
 
   function applyInternalContent(value: string) {
+    if (value === "none") {
+      setSelectedContentId("none");
+      return;
+    }
     const item = importableItems.find((candidate) => candidate.id === value);
     if (!item) return;
-    setTitle(item.title);
-    setBody(`${item.body}\n\n관련 콘텐츠: ${item.href}`);
+    setSelectedContentId(item.id);
     setPostType(item.postType);
   }
 
   async function submit() {
     const normalizedBody = body.trim();
-    const normalizedTitle = title.trim() || deriveTitle(normalizedBody);
+    const normalizedTitle = selectedContent?.title ?? deriveTitle(normalizedBody);
 
     setBusy(true);
     setError(null);
@@ -61,6 +66,7 @@ export function PostComposer({
           title: normalizedTitle,
           body: normalizedBody,
           post_type: postType,
+          external_url: selectedContent?.href ?? null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -68,9 +74,9 @@ export function PostComposer({
         setError(data.error ?? "게시글 저장에 실패했어요.");
         return;
       }
-      setTitle("");
       setBody("");
       setPostType("story");
+      setSelectedContentId("none");
       router.refresh();
     } catch {
       setError("게시글 저장에 실패했어요.");
@@ -81,12 +87,64 @@ export function PostComposer({
 
   return (
     <div className="space-y-3 rounded-lg border bg-card p-4">
-      <div className="grid grid-cols-[1fr_auto] gap-2">
-        <Select onValueChange={applyInternalContent}>
-          <SelectTrigger>
-            <SelectValue placeholder="내부 콘텐츠에서 가져오기" />
+      <Textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder={
+          selectedContent
+            ? "첨부한 콘텐츠와 함께 전할 말을 적어보세요. (선택)"
+            : "동문에게 공유할 경험, 질문, 프로젝트 모집, 행사 소식을 적어보세요."
+        }
+        rows={selectedContent ? 3 : 4}
+        maxLength={3000}
+      />
+
+      {selectedContent ? (
+        <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 p-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Link2 className="h-3.5 w-3.5" />
+              첨부 콘텐츠
+            </p>
+            <p className="mt-1 truncate text-sm font-medium">{selectedContent.title}</p>
+            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+              {selectedContent.body}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            onClick={() => setSelectedContentId("none")}
+            aria-label="첨부 제거"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="flex items-center gap-2">
+        <Select value={postType} onValueChange={(v) => setPostType(v as PostType)}>
+          <SelectTrigger className="h-8 w-[116px] text-xs">
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            {POST_TYPE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedContentId} onValueChange={applyInternalContent}>
+          <SelectTrigger className="h-8 flex-1 text-xs">
+            <span className="truncate">
+              {selectedContent ? selectedContent.label : "콘텐츠 첨부"}
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">첨부 안 함</SelectItem>
             {importableItems.length > 0 ? (
               importableItems.map((item) => (
                 <SelectItem key={item.id} value={item.id}>
@@ -100,37 +158,11 @@ export function PostComposer({
             )}
           </SelectContent>
         </Select>
-        <Select value={postType} onValueChange={(v) => setPostType(v as PostType)}>
-          <SelectTrigger className="w-[120px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {POST_TYPE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
-      <Textarea
-        value={body}
-        onChange={(e) => {
-          setBody(e.target.value);
-          if (title) setTitle("");
-        }}
-        placeholder="동문에게 공유할 경험, 질문, 프로젝트 모집, 행사 소식을 적어보세요."
-        rows={4}
-        maxLength={3000}
-      />
-
       <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <FilePlus2 className="h-3.5 w-3.5" />
-          제목은 첫 문장에서 자동으로 만들어져요.
-        </p>
-        <Button onClick={submit} disabled={busy || !body.trim()}>
+        <div />
+        <Button onClick={submit} disabled={busy || (!body.trim() && !selectedContent)}>
           <Send className="h-4 w-4" />
           {busy ? "등록 중" : "등록"}
         </Button>

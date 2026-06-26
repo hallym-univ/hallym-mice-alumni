@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { ExternalLink, Search } from "lucide-react";
+import { ExternalLink, Link2, Search } from "lucide-react";
 
 import { CommentsPanel } from "@/components/connect/CommentsPanel";
 import { PostComposer, type ImportableContent } from "@/components/connect/PostComposer";
@@ -8,7 +8,6 @@ import { ReactionBar } from "@/components/connect/ReactionBar";
 import { ReportButton } from "@/components/connect/ReportButton";
 import { Avatar } from "@/components/profile/Avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { requireMemberPage } from "@/lib/guards/page";
@@ -164,18 +163,12 @@ function PostFeedCard({ post }: { post: PostListItem }) {
         </div>
       </div>
 
-      <div>
-        <h3 className="font-semibold leading-snug">{post.title}</h3>
-        <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{post.body}</p>
-      </div>
+      {post.body ? (
+        <p className="whitespace-pre-wrap text-sm leading-relaxed">{post.body}</p>
+      ) : null}
 
       {post.external_url ? (
-        <Button asChild variant="outline" size="sm">
-          <a href={post.external_url} target="_blank" rel="noreferrer">
-            <ExternalLink className="h-4 w-4" />
-            링크 열기
-          </a>
-        </Button>
+        <PostAttachment href={post.external_url} title={post.title} />
       ) : null}
 
       {post.tags.length > 0 ? (
@@ -199,4 +192,38 @@ function PostFeedCard({ post }: { post: PostListItem }) {
       <CommentsPanel postId={post.id} />
     </Card>
   );
+}
+
+function PostAttachment({ href, title }: { href: string; title: string }) {
+  const isInternal = href.startsWith("/");
+  const label = getAttachmentLabel(href);
+  const content = (
+    <div className="rounded-md border bg-muted/30 px-3 py-2.5 transition-colors hover:bg-accent/50">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Link2 className="h-3.5 w-3.5" />
+        {label}
+      </p>
+      <div className="mt-1 flex items-center justify-between gap-3">
+        <p className="line-clamp-2 text-sm font-medium leading-snug">{title}</p>
+        {isInternal ? null : <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />}
+      </div>
+    </div>
+  );
+
+  return isInternal ? (
+    <Link href={href} className="block">
+      {content}
+    </Link>
+  ) : (
+    <a href={href} target="_blank" rel="noreferrer" className="block">
+      {content}
+    </a>
+  );
+}
+
+function getAttachmentLabel(href: string) {
+  if (href.startsWith("/content/")) return "동문 이야기";
+  if (href.startsWith("/jobs/")) return "기회";
+  if (href.startsWith("/albums/")) return "행사 기록";
+  return "링크";
 }
