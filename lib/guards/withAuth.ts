@@ -45,14 +45,41 @@ export class AuthError extends Error {
 
 /** 표준 JSON 에러 응답 빌더(Route Handler 용). */
 function jsonError(status: number, message: string): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
+  return withPrivateApiHeaders(
+    new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { "content-type": "application/json" },
+    }),
+  );
 }
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const MAX_MUTATION_BODY_BYTES = 1024 * 1024;
+const PRIVATE_API_CACHE_CONTROL = "no-store, private";
+
+function withPrivateApiHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", PRIVATE_API_CACHE_CONTROL);
+  appendVary(headers, "Cookie");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function appendVary(headers: Headers, value: string): void {
+  const existing = headers.get("Vary");
+  if (!existing) {
+    headers.set("Vary", value);
+    return;
+  }
+  const hasValue = existing
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .includes(value.toLowerCase());
+  if (!hasValue) headers.set("Vary", `${existing}, ${value}`);
+}
 
 /**
  * 브라우저 쿠키 기반 API의 공통 CSRF 방어.
@@ -238,6 +265,7 @@ export function withAuth<Ctx = Record<string, never>>(
       }
       return jsonError(500, "권한 확인 중 오류가 발생했습니다.");
     }
-    return handler(req, { me, params: routeCtx?.params });
+    const response = await handler(req, { me, params: routeCtx?.params });
+    return withPrivateApiHeaders(response);
   };
 }

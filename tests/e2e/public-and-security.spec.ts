@@ -61,11 +61,13 @@ test("authenticated API endpoints reject anonymous mutation and reads", async ({
   });
   expect(mutation.status()).toBe(401);
   expect(mutation.headers()["cache-control"]).toContain("no-store");
+  expect(mutation.headers()["vary"]).toContain("Cookie");
   await expectJson(mutation, { error: "로그인이 필요합니다." });
 
   const read = await request.get("/api/profiles");
   expect(read.status()).toBe(401);
   expect(read.headers()["cache-control"]).toContain("no-store");
+  expect(read.headers()["vary"]).toContain("Cookie");
   await expectJson(read, { error: "로그인이 필요합니다." });
 });
 
@@ -80,6 +82,7 @@ test("cross-site mutation is rejected before auth lookup", async ({ request }) =
 
   expect(response.status()).toBe(403);
   expect(response.headers()["cache-control"]).toContain("no-store");
+  expect(response.headers()["vary"]).toContain("Cookie");
   await expectJson(response, { error: "허용되지 않은 요청입니다." });
 });
 

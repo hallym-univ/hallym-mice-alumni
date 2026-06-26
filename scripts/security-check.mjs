@@ -240,6 +240,10 @@ function checkSupabaseCookiePolicy() {
 function checkApiMutationBodyGuard() {
   const source = read("lib/guards/withAuth.ts");
   for (const fragment of [
+    "PRIVATE_API_CACHE_CONTROL",
+    "withPrivateApiHeaders",
+    "appendVary(headers, \"Cookie\")",
+    "return withPrivateApiHeaders(response)",
     "MAX_MUTATION_BODY_BYTES",
     "content-length",
     "contentType && !isJsonContentType(contentType)",
