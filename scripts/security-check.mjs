@@ -213,6 +213,49 @@ function checkHighRiskMutationRateLimits() {
   }
 }
 
+function checkUploadSigningPolicy() {
+  const policy = read("lib/uploads/policy.ts");
+  for (const fragment of [
+    "MAX_UPLOAD_BYTES_BY_SCOPE",
+    "profile:",
+    "cover:",
+    "content:",
+    "album:",
+  ]) {
+    if (!policy.includes(fragment)) {
+      addFailure(`lib/uploads/policy.ts: missing upload policy fragment ${fragment}`);
+    }
+  }
+
+  const uploadRoute = read("app/api/uploads/route.ts");
+  for (const fragment of [
+    "uploadContentLengthSchema",
+    "MAX_UPLOAD_BYTES_BY_SCOPE",
+    "contentLength",
+    "status: 413",
+  ]) {
+    if (!uploadRoute.includes(fragment)) {
+      addFailure(`app/api/uploads/route.ts: missing upload size enforcement fragment ${fragment}`);
+    }
+  }
+
+  const storage = read("lib/storage/index.ts");
+  if (!storage.includes("ContentLength: opts.contentLength")) {
+    addFailure("lib/storage/index.ts: presigned PUT must include ContentLength when provided");
+  }
+
+  const uploadHook = read("components/admin/useImageUpload.ts");
+  for (const fragment of [
+    "MAX_UPLOAD_BYTES_BY_SCOPE",
+    "blob.size",
+    "contentLength: blob.size",
+  ]) {
+    if (!uploadHook.includes(fragment)) {
+      addFailure(`components/admin/useImageUpload.ts: missing client upload size fragment ${fragment}`);
+    }
+  }
+}
+
 function checkClientWritableEventTypes() {
   const source = read("lib/validators/index.ts");
   const start = source.indexOf("export const clientEventInputSchema");
@@ -399,6 +442,7 @@ checkSecurityHeaders();
 checkSupabaseCookiePolicy();
 checkApiMutationBodyGuard();
 checkHighRiskMutationRateLimits();
+checkUploadSigningPolicy();
 checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
 checkExternalLinks(files);

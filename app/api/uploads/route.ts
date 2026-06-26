@@ -4,7 +4,15 @@ import { withAuth } from "@/lib/guards/withAuth";
 import { getSignedUploadUrl } from "@/lib/storage";
 import { makeCohortHash, recordEvent } from "@/lib/analytics/events";
 import { checkDailyLimit, RateLimitUnavailableError } from "@/lib/rate-limit";
-import { uploadContentTypeSchema, uploadScopeSchema } from "@/lib/validators";
+import {
+  uploadContentLengthSchema,
+  uploadContentTypeSchema,
+  uploadScopeSchema,
+} from "@/lib/validators";
+import {
+  formatUploadBytes,
+  MAX_UPLOAD_BYTES_BY_SCOPE,
+} from "@/lib/uploads/policy";
 
 const PROFILE_UPLOAD_URL_DAILY_LIMIT = 20;
 const ADMIN_ASSET_UPLOAD_URL_DAILY_LIMIT = 300;
@@ -16,7 +24,7 @@ const ADMIN_ASSET_UPLOAD_URL_DAILY_LIMIT = 300;
  * 운영 자산(album/cover/content)은 관리자만(아래 게이트). 갤러리 이미지는
  * 운영자 큐레이션이므로 사용자 자유 업로드 경로는 만들지 않는다(§6.5-3).
  *
- * 요청 body: { contentType: "image/jpeg" | ... , scope?: "profile" | "album" | "cover" | "content" }
+ * 요청 body: { contentType: "image/jpeg" | ... , contentLength, scope?: "profile" | "album" | "cover" | "content" }
  * 응답: { url, key } — 클라가 url 로 직접 PUT(서버 대역폭 0) 후 key 를 DB 저장에 사용.
  *
  * R2 객체 key 는 서버에서 생성한다(클라가 임의 경로를 지정하지 못하게 함).
@@ -30,8 +38,9 @@ export const POST = withAuth(
       return Response.json({ error: "잘못된 요청 본문이에요." }, { status: 400 });
     }
 
-    const { contentType, scope } = (body ?? {}) as {
+    const { contentType, contentLength, scope } = (body ?? {}) as {
       contentType?: unknown;
+      contentLength?: unknown;
       scope?: unknown;
     };
 
@@ -43,11 +52,26 @@ export const POST = withAuth(
       );
     }
 
+    const lengthParsed = uploadContentLengthSchema.safeParse(contentLength);
+    if (!lengthParsed.success) {
+      return Response.json(
+        { error: lengthParsed.error.issues[0]?.message ?? "파일 크기 정보가 필요해요." },
+        { status: 400 },
+      );
+    }
+
     const scopeParsed = uploadScopeSchema.safeParse(scope ?? "album");
     if (!scopeParsed.success) {
       return Response.json({ error: "허용되지 않는 업로드 범위예요." }, { status: 400 });
     }
     const scopeStr = scopeParsed.data;
+    const maxBytes = MAX_UPLOAD_BYTES_BY_SCOPE[scopeStr];
+    if (lengthParsed.data > maxBytes) {
+      return Response.json(
+        { error: `이미지 크기가 너무 커요(최대 ${formatUploadBytes(maxBytes)}).` },
+        { status: 413 },
+      );
+    }
 
     // 회원은 본인 프로필 사진(profile)만, 운영 자산(album/cover/content)은 관리자만.
     if (scopeStr !== "profile" && !me.isAdmin) {
@@ -100,6 +124,7 @@ export const POST = withAuth(
     try {
       const { url } = await getSignedUploadUrl(key, parsed.data, {
         expiresInSeconds: 60 * 5,
+        contentLength: lengthParsed.data,
       });
       try {
         await recordEvent({

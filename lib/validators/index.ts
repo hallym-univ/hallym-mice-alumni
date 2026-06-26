@@ -162,6 +162,11 @@ export const uploadContentTypeSchema = z.enum([
 ]);
 
 export const uploadScopeSchema = z.enum(["album", "cover", "content", "profile"]);
+export const uploadContentLengthSchema = z
+  .number({ invalid_type_error: "파일 크기 정보가 필요해요." })
+  .int("파일 크기 정보가 올바르지 않아요.")
+  .min(1, "빈 파일은 업로드할 수 없어요.")
+  .max(15 * 1024 * 1024, "파일 크기가 너무 커요.");
 
 const storageKeyPattern =
   "[A-Za-z0-9][A-Za-z0-9._-]{0,180}\\.(?:jpg|jpeg|png|webp|gif)";

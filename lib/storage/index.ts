@@ -55,12 +55,13 @@ function getBucket(): string {
 export async function getSignedUploadUrl(
   key: string,
   contentType: string,
-  opts: { expiresInSeconds?: number } = {},
+  opts: { expiresInSeconds?: number; contentLength?: number } = {},
 ): Promise<{ url: string; key: string }> {
   const command = new PutObjectCommand({
     Bucket: getBucket(),
     Key: key,
     ContentType: contentType,
+    ContentLength: opts.contentLength,
   });
   const url = await getSignedUrl(getClient(), command, {
     expiresIn: opts.expiresInSeconds ?? 60 * 5, // 기본 5분

@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 
+import {
+  formatUploadBytes,
+  MAX_UPLOAD_BYTES_BY_SCOPE,
+  type UploadScope,
+} from "@/lib/uploads/policy";
+
 /**
  * R2 presigned 업로드 클라이언트 훅 (T-154/155 / §9.2).
  *
@@ -15,8 +21,6 @@ import { useState } from "react";
  */
 
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-
-export type UploadScope = "album" | "cover" | "content" | "profile";
 
 /** scope별 최대 변 길이(px). 아바타는 작게, 갤러리는 크게. */
 const MAX_DIM: Record<UploadScope, number> = {
@@ -78,12 +82,21 @@ export function useImageUpload() {
     try {
       // 0) 압축(리사이즈 + WebP).
       const { blob, contentType } = await compressImage(file, MAX_DIM[scope]);
+      const maxBytes = MAX_UPLOAD_BYTES_BY_SCOPE[scope];
+      if (blob.size <= 0) {
+        setError("빈 파일은 업로드할 수 없어요.");
+        return null;
+      }
+      if (blob.size > maxBytes) {
+        setError(`이미지 크기가 너무 커요. 최대 ${formatUploadBytes(maxBytes)}까지 가능해요.`);
+        return null;
+      }
 
       // 1) presigned URL 발급(보낼 contentType 으로 서명).
       const signRes = await fetch("/api/uploads", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ contentType, scope }),
+        body: JSON.stringify({ contentType, contentLength: blob.size, scope }),
       });
       const signJson = await signRes.json().catch(() => ({}));
       if (!signRes.ok) {
