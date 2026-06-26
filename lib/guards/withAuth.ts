@@ -124,8 +124,8 @@ function isBlockedCrossSiteMutation(req: Request): boolean {
   }
 }
 
-function rejectInvalidMutationBody(req: Request): Response | null {
-  if (!MUTATING_METHODS.has(req.method.toUpperCase())) return null;
+async function prepareMutationRequest(req: Request): Promise<Request | Response> {
+  if (!MUTATING_METHODS.has(req.method.toUpperCase())) return req;
 
   const contentType = req.headers.get("content-type");
   if (contentType && !isJsonContentType(contentType)) {
@@ -133,7 +133,13 @@ function rejectInvalidMutationBody(req: Request): Response | null {
   }
 
   const contentLengthHeader = req.headers.get("content-length");
-  if (!contentLengthHeader) return null;
+  if (!contentLengthHeader) {
+    if (!req.body) return req;
+    if (!isJsonContentType(contentType)) {
+      return jsonError(415, "JSON 요청만 처리할 수 있어요.");
+    }
+    return readBoundedJsonRequest(req);
+  }
 
   const bodyBytes = Number(contentLengthHeader);
   if (!Number.isSafeInteger(bodyBytes) || bodyBytes < 0) {
@@ -142,12 +148,48 @@ function rejectInvalidMutationBody(req: Request): Response | null {
   if (bodyBytes > MAX_MUTATION_BODY_BYTES) {
     return jsonError(413, "요청 본문이 너무 큽니다.");
   }
-  if (bodyBytes === 0) return null;
+  if (bodyBytes === 0) return req;
   if (!isJsonContentType(contentType)) {
     return jsonError(415, "JSON 요청만 처리할 수 있어요.");
   }
 
-  return null;
+  return req;
+}
+
+async function readBoundedJsonRequest(req: Request): Promise<Request | Response> {
+  const reader = req.body?.getReader();
+  if (!reader) return req;
+
+  const chunks: Uint8Array[] = [];
+  let bodyBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bodyBytes += value.byteLength;
+      if (bodyBytes > MAX_MUTATION_BODY_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        return jsonError(413, "요청 본문이 너무 큽니다.");
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return jsonError(400, "요청 본문을 읽을 수 없습니다.");
+  }
+
+  return new Request(req, { body: concatChunks(chunks, bodyBytes) });
+}
+
+function concatChunks(chunks: Uint8Array[], bodyBytes: number): ArrayBuffer {
+  const buffer = new ArrayBuffer(bodyBytes);
+  const body = new Uint8Array(buffer);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return buffer;
 }
 
 function isJsonContentType(contentType: string | null): boolean {
@@ -268,8 +310,8 @@ export function withAuth<Ctx = Record<string, never>>(
       return jsonError(403, "허용되지 않은 요청입니다.");
     }
 
-    const bodyError = rejectInvalidMutationBody(req);
-    if (bodyError) return bodyError;
+    const preparedReq = await prepareMutationRequest(req);
+    if (preparedReq instanceof Response) return preparedReq;
 
     let me: AuthContext;
     try {
@@ -280,7 +322,7 @@ export function withAuth<Ctx = Record<string, never>>(
       }
       return jsonError(500, "권한 확인 중 오류가 발생했습니다.");
     }
-    const response = await handler(req, { me, params: routeCtx?.params });
+    const response = await handler(preparedReq, { me, params: routeCtx?.params });
     return withPrivateApiHeaders(response);
   };
 }

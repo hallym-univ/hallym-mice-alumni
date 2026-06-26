@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createConnection } from "node:net";
 
 const securityHeaders = {
   "x-content-type-options": "nosniff",
@@ -121,6 +122,61 @@ test("mutating APIs reject invalid request bodies before auth lookup", async ({ 
   await expectJson(oversized, { error: "요청 본문이 너무 큽니다." });
 });
 
+test("mutating APIs bound chunked JSON bodies before auth lookup", async () => {
+  const body = `"${"x".repeat(1024 * 1024)}"`;
+  const response = await sendRawHttpRequest(
+    [
+      "POST /api/events HTTP/1.1",
+      `Host: ${baseHostHeader()}`,
+      "Content-Type: application/json",
+      "Transfer-Encoding: chunked",
+      "Connection: close",
+      "",
+      body.length.toString(16),
+      body,
+      "0",
+      "",
+      "",
+    ].join("\r\n"),
+  );
+
+  expect(response).toContain(" 413 ");
+  expect(response).toContain('"error":"요청 본문이 너무 큽니다."');
+});
+
 async function expectJson(response: { json: () => Promise<unknown> }, expected: unknown) {
   await expect(response.json()).resolves.toEqual(expected);
+}
+
+function baseURL(): URL {
+  return new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000");
+}
+
+function baseHostHeader(): string {
+  const url = baseURL();
+  return url.port ? `${url.hostname}:${url.port}` : url.hostname;
+}
+
+function sendRawHttpRequest(payload: string): Promise<string> {
+  const url = baseURL();
+  const port = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
+
+  return new Promise((resolve, reject) => {
+    const socket = createConnection({ host: url.hostname, port });
+    let response = "";
+
+    socket.setEncoding("utf8");
+    socket.setTimeout(10_000);
+    socket.on("connect", () => {
+      socket.write(payload);
+    });
+    socket.on("data", (chunk) => {
+      response += chunk;
+    });
+    socket.on("end", () => resolve(response));
+    socket.on("timeout", () => {
+      socket.destroy(new Error("raw HTTP request timed out"));
+    });
+    socket.on("error", reject);
+  });
 }
