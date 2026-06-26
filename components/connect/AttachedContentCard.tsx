@@ -53,13 +53,17 @@ export function AttachedContentCard({
         <Icon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span>첨부</span>
-          <span aria-hidden="true">·</span>
-          <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
-            {item.kindLabel}
-          </Badge>
-        </div>
+        {compact ? (
+          <p className="text-[11px] text-muted-foreground">{item.kindLabel}</p>
+        ) : (
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span>첨부</span>
+            <span aria-hidden="true">·</span>
+            <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
+              {item.kindLabel}
+            </Badge>
+          </div>
+        )}
         <p
           className={cn(
             "line-clamp-1 font-medium leading-snug",

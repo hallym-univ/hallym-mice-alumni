@@ -108,10 +108,9 @@ export const POST = withAuth(
 );
 
 function derivePostTitle(body: string, externalUrl: string | null | undefined) {
-  if (externalUrl) return `${attachmentLabel(externalUrl)} 공유`;
-
   const firstLine = body.split("\n").find((line) => line.trim())?.trim();
-  const fallback = firstLine || "새 동문 소식";
+  const fallback =
+    firstLine || (externalUrl ? `${attachmentLabel(externalUrl)} 공유` : "새 동문 소식");
   return fallback.length > 60 ? `${fallback.slice(0, 57)}...` : fallback;
 }
 
