@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { useRouter } from "next/navigation";
-import { Link2, Send, X } from "lucide-react";
+import { Link2, Paperclip, Send, X } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import type { PostType } from "@/types/database";
 export interface ImportableContent {
   id: string;
   label: string;
+  kindLabel: string;
   title: string;
   body: string;
   postType: PostType;
@@ -100,16 +101,20 @@ export function PostComposer({
       />
 
       {selectedContent ? (
-        <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 p-3">
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Link2 className="h-3.5 w-3.5" />
-              첨부 콘텐츠
-            </p>
-            <p className="mt-1 truncate text-sm font-medium">{selectedContent.title}</p>
-            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-              {selectedContent.body}
-            </p>
+        <div className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <Paperclip className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                <Link2 className="h-3 w-3" />
+                첨부됨 · {selectedContent.kindLabel}
+              </p>
+              <p className="truncate text-sm font-medium leading-snug">
+                {selectedContent.title}
+              </p>
+            </div>
           </div>
           <Button
             type="button"
@@ -140,7 +145,7 @@ export function PostComposer({
         <Select value={selectedContentId} onValueChange={applyInternalContent}>
           <SelectTrigger className="h-8 flex-1 text-xs">
             <span className="truncate">
-              {selectedContent ? selectedContent.label : "콘텐츠 첨부"}
+              {selectedContent ? `첨부됨 · ${selectedContent.kindLabel}` : "콘텐츠 첨부"}
             </span>
           </SelectTrigger>
           <SelectContent>

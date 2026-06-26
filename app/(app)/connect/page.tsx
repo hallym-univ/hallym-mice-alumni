@@ -1,6 +1,13 @@
 import Link from "next/link";
 
-import { ExternalLink, Link2, Search } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  ExternalLink,
+  FileText,
+  Images,
+  Link2,
+  Search,
+} from "lucide-react";
 
 import { CommentsPanel } from "@/components/connect/CommentsPanel";
 import { PostComposer, type ImportableContent } from "@/components/connect/PostComposer";
@@ -90,6 +97,7 @@ function buildImportableItems(
     ...articles.map((item) => ({
       id: `article-${item.id}`,
       label: `동문 이야기 · ${item.title}`,
+      kindLabel: "동문 이야기",
       title: item.title,
       body: item.summary,
       href: `/content/${item.id}`,
@@ -98,6 +106,7 @@ function buildImportableItems(
     ...jobs.map((item) => ({
       id: `job-${item.id}`,
       label: `기회 · ${item.title}`,
+      kindLabel: "기회",
       title: item.title,
       body: `${item.organization}${item.location ? ` · ${item.location}` : ""}\n${JOB_TYPE_LABEL[item.job_type]}`,
       href: `/jobs/${item.id}`,
@@ -106,6 +115,7 @@ function buildImportableItems(
     ...albums.map((item) => ({
       id: `album-${item.id}`,
       label: `행사 기록 · ${item.title}`,
+      kindLabel: "행사 기록",
       title: item.title,
       body: item.description ?? "행사 사진과 기록이 업데이트되었어요.",
       href: `/albums/${item.id}`,
@@ -197,25 +207,35 @@ function PostFeedCard({ post }: { post: PostListItem }) {
 function PostAttachment({ href, title }: { href: string; title: string }) {
   const isInternal = href.startsWith("/");
   const label = getAttachmentLabel(href);
+  const Icon = getAttachmentIcon(href);
   const content = (
-    <div className="rounded-md border bg-muted/30 px-3 py-2.5 transition-colors hover:bg-accent/50">
-      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Link2 className="h-3.5 w-3.5" />
-        {label}
-      </p>
-      <div className="mt-1 flex items-center justify-between gap-3">
-        <p className="line-clamp-2 text-sm font-medium leading-snug">{title}</p>
-        {isInternal ? null : <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />}
+    <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 transition-colors hover:bg-accent/40">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+          <Link2 className="h-3 w-3" />
+          연결된 콘텐츠 · {label}
+        </p>
+        <p className="truncate text-sm font-medium leading-snug">{title}</p>
       </div>
+      {isInternal ? null : <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />}
     </div>
   );
 
   return isInternal ? (
-    <Link href={href} className="block">
+    <Link href={href} className="block" aria-label={`${label} 열기: ${title}`}>
       {content}
     </Link>
   ) : (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="block">
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block"
+      aria-label={`${label} 열기: ${title}`}
+    >
       {content}
     </a>
   );
@@ -226,4 +246,11 @@ function getAttachmentLabel(href: string) {
   if (href.startsWith("/jobs/")) return "기회";
   if (href.startsWith("/albums/")) return "행사 기록";
   return "링크";
+}
+
+function getAttachmentIcon(href: string) {
+  if (href.startsWith("/content/")) return FileText;
+  if (href.startsWith("/jobs/")) return BriefcaseBusiness;
+  if (href.startsWith("/albums/")) return Images;
+  return Link2;
 }
