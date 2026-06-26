@@ -141,6 +141,39 @@ function checkApiRoutes() {
   }
 }
 
+function checkServerActionAdminGuard() {
+  const guard = read("lib/guards/serverAction.ts");
+  for (const fragment of [
+    'import "server-only"',
+    "headers()",
+    "sec-fetch-site",
+    "ALLOWED_FETCH_SITES",
+    "origin",
+    "x-forwarded-host",
+    "publicEnv.siteUrl",
+    "ServerActionSecurityError",
+    "assertServerActionRequest",
+  ]) {
+    if (!guard.includes(fragment)) {
+      addFailure(`lib/guards/serverAction.ts: missing server action guard fragment ${fragment}`);
+    }
+  }
+
+  const actionFiles = walk("app").filter((rel) => /\/actions\.tsx?$/.test(rel));
+  for (const rel of actionFiles) {
+    const source = read(rel);
+    if (!source.includes('\"use server\"') && !source.includes("'use server'")) {
+      continue;
+    }
+    if (
+      source.includes("createAdminClient(") &&
+      !source.includes("assertServerActionRequest(")
+    ) {
+      addFailure(`${rel}: server action using admin client must call assertServerActionRequest`);
+    }
+  }
+}
+
 function checkSecurityHeaders() {
   const source = read("next.config.mjs");
   for (const header of [
@@ -1239,6 +1272,7 @@ const files = [...walk("app"), ...walk("components"), ...walk("lib")];
 checkNoClientSecretImports(files);
 checkSensitiveLibsAreServerOnly(files);
 checkApiRoutes();
+checkServerActionAdminGuard();
 checkSecurityHeaders();
 checkPublicAssetUrlPolicy();
 checkAuthRedirectPolicy();

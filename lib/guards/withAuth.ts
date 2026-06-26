@@ -19,8 +19,9 @@ import type { ProfileRow } from "@/types/database";
  *  member = 세션 있음 + profiles.status === 'active' (suspended/withdrawn 차단).
  *  verified 게이트는 존재하지 않는다(is_verified 는 비차단 배지일 뿐).
  *
- *  모든 Route Handler / Server Action 은 withAuth 로 감싼다.
- *  감싸지 않으면 데이터(admin 클라이언트)에 닿지 않는 것이 기본값이다.
+ *  모든 Route Handler 는 withAuth 로 감싼다.
+ *  프로필 생성처럼 withAuth 를 쓸 수 없는 Server Action 은 lib/guards/serverAction.ts 의
+ *  전용 Origin 가드를 먼저 통과해야 admin 클라이언트에 닿을 수 있다.
  */
 
 export type Role = "any" | "member" | "admin";

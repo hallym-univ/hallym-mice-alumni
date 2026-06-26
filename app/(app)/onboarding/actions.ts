@@ -5,13 +5,18 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { recordEvent } from "@/lib/analytics/events";
+import {
+  assertServerActionRequest,
+  ServerActionSecurityError,
+} from "@/lib/guards/serverAction";
 import { onboardingSchema } from "@/lib/validators";
 
 /**
  * 온보딩(가입 1단계) Server Action (§6.1c / T-101).
  *
  * 흐름:
- *  1) 세션 확인(로그인 필수). 이미 프로필이 있으면 /home 으로.
+ *  1) 서버 액션 Origin/Sec-Fetch-Site 확인 후 세션 확인(로그인 필수).
+ *     이미 프로필이 있으면 /home 으로.
  *  2) onboardingSchema 검증(동의 3체크 포함 — 미체크 시 제출 불가).
  *  3) profiles insert(status='active' = 즉시 회원, 검증 게이트 없음).
  *  4) consents 3건 기록(terms/privacy/profile_public + doc_version).
@@ -33,6 +38,15 @@ export async function submitOnboarding(
   _prev: OnboardingState,
   formData: FormData,
 ): Promise<OnboardingState> {
+  try {
+    await assertServerActionRequest();
+  } catch (err) {
+    if (err instanceof ServerActionSecurityError) {
+      return { ok: false, error: err.message };
+    }
+    throw err;
+  }
+
   // 1) 세션
   const supabase = await createServerSupabase();
   const {
