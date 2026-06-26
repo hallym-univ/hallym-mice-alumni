@@ -256,6 +256,31 @@ function checkUploadSigningPolicy() {
   }
 }
 
+function checkOperationalIndexes() {
+  const source = read("supabase/migrations/0007_operational_query_indexes.sql");
+  for (const indexName of [
+    "blocks_blocked_profile_lookup",
+    "profile_tags_tag_profile_lookup",
+    "job_tags_tag_job_lookup",
+    "notifications_inbox_lookup",
+    "notifications_unread_lookup",
+    "comments_published_post_time",
+    "reports_status_time_lookup",
+    "reports_target_lookup",
+    "profiles_directory_updated_lookup",
+    "jobs_published_created_lookup",
+    "jobs_author_updated_lookup",
+    "job_bookmarks_profile_time_lookup",
+    "articles_status_created_lookup",
+    "albums_public_event_created_lookup",
+    "album_images_album_sort_created_lookup",
+  ]) {
+    if (!source.includes(indexName)) {
+      addFailure(`supabase/migrations/0007_operational_query_indexes.sql: missing ${indexName}`);
+    }
+  }
+}
+
 function checkClientWritableEventTypes() {
   const source = read("lib/validators/index.ts");
   const start = source.indexOf("export const clientEventInputSchema");
@@ -443,6 +468,7 @@ checkSupabaseCookiePolicy();
 checkApiMutationBodyGuard();
 checkHighRiskMutationRateLimits();
 checkUploadSigningPolicy();
+checkOperationalIndexes();
 checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
 checkExternalLinks(files);
