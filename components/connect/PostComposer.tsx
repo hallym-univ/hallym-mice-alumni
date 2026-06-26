@@ -55,7 +55,10 @@ export function PostComposer({
 
   async function submit() {
     const normalizedBody = body.trim();
-    const normalizedTitle = selectedContent?.title ?? deriveTitle(normalizedBody);
+    const normalizedTitle = deriveTitle(
+      normalizedBody,
+      selectedContent ? `${selectedContent.kindLabel} 공유` : "새 동문 소식",
+    );
 
     setBusy(true);
     setError(null);
@@ -101,17 +104,17 @@ export function PostComposer({
       />
 
       {selectedContent ? (
-        <div className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2">
+        <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-2.5 py-2">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-              <Paperclip className="h-4 w-4" />
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground">
+              <Paperclip className="h-3.5 w-3.5" />
             </span>
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
                 <Link2 className="h-3 w-3" />
-                첨부됨 · {selectedContent.kindLabel}
+                참조 · {selectedContent.kindLabel}
               </p>
-              <p className="truncate text-sm font-medium leading-snug">
+              <p className="truncate text-xs font-medium leading-snug sm:text-sm">
                 {selectedContent.title}
               </p>
             </div>
@@ -145,7 +148,7 @@ export function PostComposer({
         <Select value={selectedContentId} onValueChange={applyInternalContent}>
           <SelectTrigger className="h-8 flex-1 text-xs">
             <span className="truncate">
-              {selectedContent ? `첨부됨 · ${selectedContent.kindLabel}` : "콘텐츠 첨부"}
+              {selectedContent ? `참조 추가됨 · ${selectedContent.kindLabel}` : "내부 콘텐츠 참조"}
             </span>
           </SelectTrigger>
           <SelectContent>
@@ -182,8 +185,7 @@ export function PostComposer({
   );
 }
 
-function deriveTitle(body: string) {
-  const firstLine =
-    body.split("\n").find((line) => line.trim())?.trim() ?? "새 동문 소식";
+function deriveTitle(body: string, fallback: string) {
+  const firstLine = body.split("\n").find((line) => line.trim())?.trim() ?? fallback;
   return firstLine.length > 60 ? `${firstLine.slice(0, 57)}...` : firstLine;
 }

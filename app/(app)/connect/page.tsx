@@ -24,6 +24,12 @@ import { listPublishedPosts, type PostListItem } from "@/lib/connect/queries";
 import { listPublishedJobs } from "@/lib/jobs/queries";
 import { formatDate, JOB_TYPE_LABEL, POST_TYPE_LABEL } from "@/lib/labels";
 
+interface AttachmentPreview {
+  href: string;
+  label: string;
+  title: string;
+}
+
 export default async function ConnectPage({
   searchParams,
 }: {
@@ -38,8 +44,19 @@ export default async function ConnectPage({
     listPublicAlbums(12).catch(() => []),
   ]);
 
-  const posts = q ? postsRaw.filter((post) => matchesPost(post, q)) : postsRaw;
-  const importableItems = buildImportableItems(articles, jobsRes.items, albums).filter(
+  const allImportableItems = buildImportableItems(articles, jobsRes.items, albums);
+  const attachmentMap = new Map(
+    allImportableItems.map((item) => [
+      item.href,
+      { href: item.href, label: item.kindLabel, title: item.title },
+    ]),
+  );
+  const posts = q
+    ? postsRaw.filter((post) =>
+        matchesPost(post, q, resolveAttachment(post.external_url, attachmentMap)),
+      )
+    : postsRaw;
+  const importableItems = allImportableItems.filter(
     (item) => !q || matchesText([item.title, item.body, item.label], q),
   );
 
@@ -70,7 +87,11 @@ export default async function ConnectPage({
         </div>
 
         {posts.map((post) => (
-          <PostFeedCard key={post.id} post={post} />
+          <PostFeedCard
+            key={post.id}
+            post={post}
+            attachment={resolveAttachment(post.external_url, attachmentMap)}
+          />
         ))}
 
         {q && posts.length === 0 ? (
@@ -124,11 +145,17 @@ function buildImportableItems(
   ];
 }
 
-function matchesPost(post: PostListItem, q: string) {
+function matchesPost(
+  post: PostListItem,
+  q: string,
+  attachment: AttachmentPreview | null,
+) {
   return matchesText(
     [
       post.title,
       post.body,
+      attachment?.title,
+      attachment?.label,
       post.author?.name,
       post.author?.organization,
       post.author?.position,
@@ -143,7 +170,13 @@ function matchesText(values: Array<string | null | undefined>, q: string) {
   return values.some((value) => value?.toLowerCase().includes(needle));
 }
 
-function PostFeedCard({ post }: { post: PostListItem }) {
+function PostFeedCard({
+  post,
+  attachment,
+}: {
+  post: PostListItem;
+  attachment: AttachmentPreview | null;
+}) {
   const shareUrl = `/connect?post=${post.id}`;
 
   return (
@@ -177,9 +210,7 @@ function PostFeedCard({ post }: { post: PostListItem }) {
         <p className="whitespace-pre-wrap text-sm leading-relaxed">{post.body}</p>
       ) : null}
 
-      {post.external_url ? (
-        <PostAttachment href={post.external_url} title={post.title} />
-      ) : null}
+      {attachment ? <PostAttachment attachment={attachment} /> : null}
 
       {post.tags.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
@@ -204,23 +235,27 @@ function PostFeedCard({ post }: { post: PostListItem }) {
   );
 }
 
-function PostAttachment({ href, title }: { href: string; title: string }) {
+function PostAttachment({ attachment }: { attachment: AttachmentPreview }) {
+  const { href, label, title } = attachment;
   const isInternal = href.startsWith("/");
-  const label = getAttachmentLabel(href);
   const Icon = getAttachmentIcon(href);
   const content = (
-    <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 transition-colors hover:bg-accent/40">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-        <Icon className="h-4 w-4" />
+    <div className="inline-flex max-w-full items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-2 text-left transition-colors hover:bg-accent/40">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0">
         <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
           <Link2 className="h-3 w-3" />
-          연결된 콘텐츠 · {label}
+          참조 · {label}
         </p>
-        <p className="truncate text-sm font-medium leading-snug">{title}</p>
+        <p className="max-w-[15rem] truncate text-xs font-medium leading-snug sm:max-w-[24rem] sm:text-sm">
+          {title}
+        </p>
       </div>
-      {isInternal ? null : <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />}
+      {isInternal ? null : (
+        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      )}
     </div>
   );
 
@@ -239,6 +274,31 @@ function PostAttachment({ href, title }: { href: string; title: string }) {
       {content}
     </a>
   );
+}
+
+function resolveAttachment(
+  href: string | null,
+  attachmentMap: Map<string, AttachmentPreview>,
+): AttachmentPreview | null {
+  if (!href) return null;
+  const known = attachmentMap.get(href);
+  if (known) return known;
+
+  return {
+    href,
+    label: getAttachmentLabel(href),
+    title: getAttachmentFallbackTitle(href),
+  };
+}
+
+function getAttachmentFallbackTitle(href: string) {
+  if (href.startsWith("/")) return "콘텐츠 보기";
+
+  try {
+    return new URL(href).hostname;
+  } catch {
+    return "링크 열기";
+  }
 }
 
 function getAttachmentLabel(href: string) {
