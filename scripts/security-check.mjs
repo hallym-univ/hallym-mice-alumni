@@ -410,6 +410,37 @@ function checkNoDangerousHtml(files) {
   }
 }
 
+function checkMarkdownUrlPolicy() {
+  const policy = read("lib/markdown/url-policy.ts");
+  for (const fragment of [
+    "ALLOWED_PROTOCOLS",
+    '"https:"',
+    '"mailto:"',
+    '"tel:"',
+    'trimmed.startsWith("//")',
+    "normalizeMarkdownUrl",
+    "markdownUrlTransform",
+  ]) {
+    if (!policy.includes(fragment)) {
+      addFailure(`lib/markdown/url-policy.ts: missing markdown URL policy fragment ${fragment}`);
+    }
+  }
+
+  const reader = read("components/content/ArticleReader.tsx");
+  for (const fragment of ["markdownUrlTransform", "urlTransform={markdownUrlTransform}"]) {
+    if (!reader.includes(fragment)) {
+      addFailure(`components/content/ArticleReader.tsx: markdown reader must use safe URL transform ${fragment}`);
+    }
+  }
+
+  const editor = read("components/admin/RichEditor.tsx");
+  for (const fragment of ["normalizeMarkdownUrl", "setLink({ href: safeUrl })"]) {
+    if (!editor.includes(fragment)) {
+      addFailure(`components/admin/RichEditor.tsx: markdown editor must validate links with ${fragment}`);
+    }
+  }
+}
+
 function checkEnvFiles() {
   const trackedEnv = execFileSync("git", ["ls-files", ".env", ".env.local", ".vercel"], {
     cwd: root,
@@ -527,6 +558,7 @@ checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
+checkMarkdownUrlPolicy();
 checkEnvFiles();
 checkBuildArtifacts();
 

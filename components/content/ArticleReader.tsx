@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { GradientCover } from "@/components/common/GradientCover";
 import { formatDate } from "@/lib/labels";
+import { markdownUrlTransform } from "@/lib/markdown/url-policy";
 import type { ArticleDetail } from "@/lib/content/types";
 
 /**
@@ -47,7 +48,12 @@ export function ArticleReader({ article }: { article: ArticleDetail }) {
       </p>
 
       <div className="prose prose-neutral mt-6 max-w-none prose-headings:tracking-tight prose-a:text-primary prose-code:before:content-none prose-code:after:content-none prose-img:rounded-lg">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.body}</ReactMarkdown>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          urlTransform={markdownUrlTransform}
+        >
+          {article.body}
+        </ReactMarkdown>
       </div>
 
       {article.tags.length > 0 ? (

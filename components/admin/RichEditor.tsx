@@ -32,6 +32,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { useImageUpload } from "@/components/admin/useImageUpload";
+import { normalizeMarkdownUrl } from "@/lib/markdown/url-policy";
 import { cn, r2PublicUrl } from "@/lib/utils";
 
 /** tiptap-markdown 이 editor.storage.markdown 에 주입하는 직렬화 API(타입 미제공 → 캐스팅). */
@@ -62,6 +63,7 @@ export function RichEditor({
   const rehostRef = useRef<() => void>(() => {});
   const rehostTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [rehostFailed, setRehostFailed] = useState(0); // 재호스팅 실패한 외부 이미지 수(경고용)
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const editor = useEditor({
     immediatelyRender: false, // Next.js SSR 하이드레이션 안전.
@@ -222,14 +224,21 @@ export function RichEditor({
     const url = window.prompt("링크 URL", prev ?? "https://");
     if (url === null) return;
     if (url === "") {
+      setLinkError(null);
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
+    const safeUrl = normalizeMarkdownUrl(url);
+    if (!safeUrl) {
+      setLinkError("링크는 https, mailto, tel 또는 내부 경로만 사용할 수 있어요.");
+      return;
+    }
+    setLinkError(null);
     editor
       .chain()
       .focus()
       .extendMarkRange("link")
-      .setLink({ href: url })
+      .setLink({ href: safeUrl })
       .run();
   }
 
@@ -315,6 +324,9 @@ export function RichEditor({
       ) : null}
       {error ? (
         <p className="border-t px-3 py-1.5 text-xs text-destructive">{error}</p>
+      ) : null}
+      {linkError ? (
+        <p className="border-t px-3 py-1.5 text-xs text-destructive">{linkError}</p>
       ) : null}
       {rehostFailed > 0 ? (
         <p className="border-t px-3 py-1.5 text-xs text-amber-600">
