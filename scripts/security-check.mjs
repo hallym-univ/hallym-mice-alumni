@@ -349,6 +349,7 @@ function checkOperationalIndexes() {
 
 function checkEventRetentionRollup() {
   const migration = read("supabase/migrations/0008_event_retention_rollup.sql");
+  const lockMigration = read("supabase/migrations/0009_event_retention_rollup_lock.sql");
   for (const fragment of [
     "rollup_expired_events",
     "retention_days integer default 90",
@@ -359,6 +360,20 @@ function checkEventRetentionRollup() {
   ]) {
     if (!migration.includes(fragment)) {
       addFailure(`supabase/migrations/0008_event_retention_rollup.sql: missing ${fragment}`);
+    }
+  }
+
+  for (const fragment of [
+    "events_retention_created_lookup",
+    "pg_try_advisory_xact_lock",
+    "event_rollup_already_running",
+    "'skipped', true",
+    "'skipped', false",
+    "revoke all on function public.rollup_expired_events(integer) from public",
+    "grant execute on function public.rollup_expired_events(integer) to service_role",
+  ]) {
+    if (!lockMigration.includes(fragment)) {
+      addFailure(`supabase/migrations/0009_event_retention_rollup_lock.sql: missing ${fragment}`);
     }
   }
 

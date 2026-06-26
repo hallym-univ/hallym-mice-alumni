@@ -134,6 +134,7 @@ npm run events:rollup
 ```
 
 보존 기간을 임시 조정해야 하면 `EVENT_RETENTION_DAYS=120 npm run events:rollup` 또는 `npm run events:rollup -- --retention-days=120` 형식으로 실행한다. 이 명령은 `SUPABASE_SERVICE_ROLE_KEY`를 사용하므로 브라우저나 공개 CI에서 실행하지 않는다.
+동시에 두 번 실행되면 DB 함수가 advisory lock으로 한쪽을 `skipped: true` 처리해 중복 집계를 막는다.
 
 ---
 
