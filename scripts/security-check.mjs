@@ -516,6 +516,21 @@ function checkDataMinimization() {
   if (albumPublic.includes('.select("*")')) {
     addFailure("lib/albums/public.ts: public album queries must not select all columns");
   }
+
+  const contentPublic = read("lib/content/public.ts");
+  for (const fragment of [
+    "const ARTICLE_DETAIL_COLS",
+    ".select(ARTICLE_DETAIL_COLS)",
+    "ArticleDetailRow",
+    ".is(\"deleted_at\", null)",
+  ]) {
+    if (!contentPublic.includes(fragment)) {
+      addFailure(`lib/content/public.ts: missing content public column policy fragment ${fragment}`);
+    }
+  }
+  if (contentPublic.includes('.select("*")')) {
+    addFailure("lib/content/public.ts: public content queries must not select all columns");
+  }
 }
 
 function checkListQueryParamValidation() {

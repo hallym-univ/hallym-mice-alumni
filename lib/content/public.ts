@@ -12,6 +12,23 @@ import type { ArticleDetail, ArticleListItem } from "@/lib/content/types";
  * service_role(admin)로 서버에서만 호출.
  */
 
+type ArticleDetailRow = Pick<
+  ArticleRow,
+  | "id"
+  | "title"
+  | "summary"
+  | "body"
+  | "cover_path"
+  | "related_profile_id"
+  | "tags"
+  | "status"
+  | "created_at"
+  | "updated_at"
+>;
+
+const ARTICLE_DETAIL_COLS =
+  "id,title,summary,body,cover_path,related_profile_id,tags,status,created_at,updated_at";
+
 /** 공개 콘텐츠 목록(최신순). limit 으로 미리보기용 소량 조회 가능. */
 export async function listPublishedArticles(
   limit = 100,
@@ -59,9 +76,9 @@ export async function getPublishedArticle(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("articles")
-    .select("*")
+    .select(ARTICLE_DETAIL_COLS)
     .eq("id", id)
-    .maybeSingle<ArticleRow>();
+    .maybeSingle<ArticleDetailRow>();
 
   if (error) throw new Error(`[content] 상세 조회 실패: ${error.message}`);
   if (!data) return { kind: "not_found" };
@@ -74,6 +91,7 @@ export async function getPublishedArticle(
       .from("profiles")
       .select("id,name,photo_path,status,is_public")
       .eq("id", data.related_profile_id)
+      .is("deleted_at", null)
       .maybeSingle<
         Pick<ProfileRow, "id" | "name" | "photo_path" | "status" | "is_public">
       >();
