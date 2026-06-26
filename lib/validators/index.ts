@@ -363,6 +363,53 @@ export const profileUpdateSchema = z.object({
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 
+export const accountActionSchema = z.object({
+  action: z.enum(["hide", "unhide", "withdraw"], {
+    errorMap: () => ({ message: "알 수 없는 동작이에요." }),
+  }),
+});
+
+export const notificationReadSchema = z
+  .object({
+    id: z.string().uuid("알림 식별자가 올바르지 않아요.").optional(),
+    all: z.boolean().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.all === true && value.id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "id 와 all 은 함께 보낼 수 없어요.",
+        path: ["id"],
+      });
+    }
+    if (value.all !== true && !value.id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "id 또는 all 이 필요해요.",
+        path: ["id"],
+      });
+    }
+  });
+
+export const clientEventInputSchema = z.object({
+  eventType: z.enum([
+    "profile_view",
+    "coffeechat_click",
+    "proposal_email_click",
+    "job_view",
+    "job_apply_click",
+    "job_bookmark",
+    "article_view",
+    "newsletter_click",
+  ]),
+  targetId: z
+    .string()
+    .uuid("대상 식별자가 올바르지 않아요.")
+    .optional()
+    .nullable()
+    .transform((v) => v ?? null),
+});
+
 /** 제안 이메일 중계 입력. */
 export const proposalSchema = z.object({
   target_profile_id: z.string().uuid(),
@@ -446,6 +493,11 @@ export const jobInputSchema = z.object({
 
 export type JobInput = z.infer<typeof jobInputSchema>;
 
+export const adminJobStatusPatchSchema = z.object({
+  jobId: z.string().uuid("공고 식별자가 올바르지 않아요."),
+  status: jobStatusSchema,
+});
+
 // ── Phase 2.5 — 커넥트(posts) ─────────────────────────────────────────────────
 
 export const postTypeSchema = z.enum(["story", "question", "project", "event", "link"]);
@@ -497,6 +549,41 @@ export const commentInputSchema = z.object({
 
 export type PostInput = z.infer<typeof postInputSchema>;
 export type CommentInput = z.infer<typeof commentInputSchema>;
+
+export const adminMemberPatchSchema = z
+  .object({
+    profileId: z.string().uuid("회원 식별자가 올바르지 않아요."),
+    role: profileRoleSchema.optional(),
+    status: profileStatusSchema.optional(),
+    isVerified: z.boolean().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.role === undefined &&
+      value.status === undefined &&
+      value.isVerified === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "변경할 항목이 없어요.",
+      });
+    }
+  });
+
+export const adminReportPatchSchema = z
+  .object({
+    reportId: z.string().uuid("신고 식별자가 올바르지 않아요."),
+    status: reportStatusSchema.optional(),
+    action: z.enum(["hide", "suspend"]).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.status === undefined && value.action === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "변경할 항목이 없어요.",
+      });
+    }
+  });
 
 // ── Phase 3 — 콘텐츠(articles) ─────────────────────────────────────────────────
 

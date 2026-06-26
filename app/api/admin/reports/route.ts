@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recordAdminLog } from "@/lib/admin/log";
 import { withAuth } from "@/lib/guards/withAuth";
-import { reportStatusSchema } from "@/lib/validators";
+import { adminReportPatchSchema, reportStatusSchema } from "@/lib/validators";
 import type { ProfileRow, ReportRow } from "@/types/database";
 
 /**
@@ -132,15 +132,14 @@ export const PATCH = withAuth(
       return Response.json({ error: "잘못된 요청 본문이에요." }, { status: 400 });
     }
 
-    const { reportId, status, action } = (body ?? {}) as {
-      reportId?: unknown;
-      status?: unknown;
-      action?: unknown;
-    };
-
-    if (typeof reportId !== "string" || !reportId) {
-      return Response.json({ error: "reportId 가 필요해요." }, { status: 400 });
+    const parsed = adminReportPatchSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." },
+        { status: 400 },
+      );
     }
+    const { reportId, status, action } = parsed.data;
 
     const admin = createAdminClient();
     const { data: report, error: loadErr } = await admin
@@ -156,11 +155,7 @@ export const PATCH = withAuth(
     // 1) 상태 전이(선택).
     let newStatus = report.status;
     if (status !== undefined) {
-      const parsed = reportStatusSchema.safeParse(status);
-      if (!parsed.success) {
-        return Response.json({ error: "잘못된 상태값이에요." }, { status: 400 });
-      }
-      newStatus = parsed.data;
+      newStatus = status;
       const { error: updErr } = await admin
         .from("reports")
         .update({ status: newStatus, handled_by: me.profile.id })

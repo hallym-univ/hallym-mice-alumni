@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { recordAdminLog } from "@/lib/admin/log";
 import { createInAppNotification } from "@/lib/notifications/create";
 import { withAuth } from "@/lib/guards/withAuth";
-import { jobStatusSchema } from "@/lib/validators";
+import { adminJobStatusPatchSchema, jobStatusSchema } from "@/lib/validators";
 import type { JobRow, JobStatus } from "@/types/database";
 
 /**
@@ -72,14 +72,14 @@ export const PATCH = withAuth(
       return Response.json({ error: "잘못된 요청 본문이에요." }, { status: 400 });
     }
 
-    const { jobId, status } = (body ?? {}) as { jobId?: unknown; status?: unknown };
-    if (typeof jobId !== "string" || !jobId) {
-      return Response.json({ error: "jobId 가 필요해요." }, { status: 400 });
-    }
-    const parsed = jobStatusSchema.safeParse(status);
+    const parsed = adminJobStatusPatchSchema.safeParse(body);
     if (!parsed.success) {
-      return Response.json({ error: "잘못된 상태값이에요." }, { status: 400 });
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." },
+        { status: 400 },
+      );
     }
+    const { jobId, status } = parsed.data;
 
     const admin = createAdminClient();
     const { data: existing } = await admin
@@ -93,7 +93,7 @@ export const PATCH = withAuth(
 
     const { error } = await admin
       .from("jobs")
-      .update({ status: parsed.data as JobStatus, updated_at: new Date().toISOString() })
+      .update({ status: status as JobStatus, updated_at: new Date().toISOString() })
       .eq("id", jobId);
     if (error) {
       return Response.json({ error: "상태 변경에 실패했어요." }, { status: 500 });
@@ -104,12 +104,12 @@ export const PATCH = withAuth(
       action: "job_status_change",
       targetType: "job",
       targetId: jobId,
-      detail: { from: existing.status, to: parsed.data },
+      detail: { from: existing.status, to: status },
     });
 
     // 승인(게시)되면 작성자에게 인앱 알림.
     if (
-      parsed.data === "published" &&
+      status === "published" &&
       existing.status !== "published" &&
       existing.author_id
     ) {
@@ -122,7 +122,7 @@ export const PATCH = withAuth(
       });
     }
 
-    return Response.json({ ok: true, status: parsed.data });
+    return Response.json({ ok: true, status });
   },
   { role: "admin" },
 );

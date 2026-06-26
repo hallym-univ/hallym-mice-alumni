@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { recordAdminLog } from "@/lib/admin/log";
 import { withAuth } from "@/lib/guards/withAuth";
 import { sanitizeSearchTerm } from "@/lib/search";
-import { profileRoleSchema, profileStatusSchema } from "@/lib/validators";
+import { adminMemberPatchSchema, profileStatusSchema } from "@/lib/validators";
 import type { ProfileRow } from "@/types/database";
 
 /**
@@ -87,54 +87,37 @@ export const PATCH = withAuth(
       return Response.json({ error: "잘못된 요청 본문이에요." }, { status: 400 });
     }
 
-    const { profileId, role, status, isVerified } = (body ?? {}) as {
-      profileId?: unknown;
-      role?: unknown;
-      status?: unknown;
-      isVerified?: unknown;
-    };
-
-    if (typeof profileId !== "string" || !profileId) {
-      return Response.json({ error: "profileId 가 필요해요." }, { status: 400 });
+    const parsed = adminMemberPatchSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." },
+        { status: 400 },
+      );
     }
+    const { profileId, role, status, isVerified } = parsed.data;
 
     const update: Partial<Pick<ProfileRow, "role" | "status" | "is_verified">> = {};
     const detail: Record<string, unknown> = {};
 
     if (role !== undefined) {
-      const parsed = profileRoleSchema.safeParse(role);
-      if (!parsed.success) {
-        return Response.json({ error: "잘못된 역할값이에요." }, { status: 400 });
-      }
-      if (parsed.data === "admin") {
+      if (role === "admin") {
         return Response.json(
           { error: "관리자 권한은 별도의 관리자 권한 토글로 변경해주세요." },
           { status: 400 },
         );
       }
-      update.role = parsed.data;
-      detail.role = parsed.data;
+      update.role = role;
+      detail.role = role;
     }
 
     if (status !== undefined) {
-      const parsed = profileStatusSchema.safeParse(status);
-      if (!parsed.success) {
-        return Response.json({ error: "잘못된 상태값이에요." }, { status: 400 });
-      }
-      update.status = parsed.data;
-      detail.status = parsed.data;
+      update.status = status;
+      detail.status = status;
     }
 
     if (isVerified !== undefined) {
-      if (typeof isVerified !== "boolean") {
-        return Response.json({ error: "isVerified 는 boolean 이어야 해요." }, { status: 400 });
-      }
       update.is_verified = isVerified;
       detail.is_verified = isVerified;
-    }
-
-    if (Object.keys(update).length === 0) {
-      return Response.json({ error: "변경할 항목이 없어요." }, { status: 400 });
     }
 
     // 자기 자신을 정지/강등하는 실수 방지(최소한의 가드).

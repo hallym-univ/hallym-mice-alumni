@@ -1,6 +1,7 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteObject } from "@/lib/storage";
+import { accountActionSchema } from "@/lib/validators";
 
 /**
  * POST /api/account — 계정 동작 (§8.3 self-serve / T-108).
@@ -17,15 +18,23 @@ import { deleteObject } from "@/lib/storage";
  */
 export const POST = withAuth(
   async (req, { me }) => {
-    let body: { action?: string };
+    let body: unknown;
     try {
       body = await req.json();
     } catch {
       return Response.json({ error: "잘못된 요청이에요." }, { status: 400 });
     }
 
+    const parsed = accountActionSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "알 수 없는 동작이에요." },
+        { status: 422 },
+      );
+    }
+
     const admin = createAdminClient();
-    const action = body.action;
+    const action = parsed.data.action;
 
     if (action === "hide" || action === "unhide") {
       const { error } = await admin

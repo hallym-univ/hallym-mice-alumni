@@ -2,8 +2,8 @@ import { withAuth } from "@/lib/guards/withAuth";
 import {
   makeCohortHash,
   recordEvent,
-  type EventType,
 } from "@/lib/analytics/events";
+import { clientEventInputSchema } from "@/lib/validators";
 
 /**
  * POST /api/events — 행동 이벤트 기록 (§6.8 / T-207).
@@ -13,38 +13,30 @@ import {
  * 사용자가 기록 가능한 이벤트만 화이트리스트로 한정한다.
  */
 
-const ALLOWED: ReadonlySet<EventType> = new Set<EventType>([
-  "profile_view",
-  "coffeechat_click",
-  "proposal_email_click",
-  // Phase 2/3 — 클라이언트가 기록하는 공고/콘텐츠 클릭.
-  "job_view",
-  "job_apply_click",
-  "job_bookmark",
-  "article_view",
-  "newsletter_click",
-]);
-
 export const POST = withAuth(
   async (req, { me }) => {
-    let body: { eventType?: string; targetId?: string | null };
+    let body: unknown;
     try {
       body = await req.json();
     } catch {
       return Response.json({ error: "잘못된 요청이에요." }, { status: 400 });
     }
 
-    const eventType = body.eventType as EventType | undefined;
-    if (!eventType || !ALLOWED.has(eventType)) {
-      return Response.json({ error: "허용되지 않은 이벤트예요." }, { status: 422 });
+    const parsed = clientEventInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "허용되지 않은 이벤트예요." },
+        { status: 422 },
+      );
     }
+    const { eventType, targetId } = parsed.data;
 
     try {
       await recordEvent({
         eventType,
         cohortHash: makeCohortHash(me.userId),
         profileId: me.profile.id,
-        targetId: body.targetId ?? null,
+        targetId,
       });
     } catch (e) {
       console.error("[POST /api/events]", e);

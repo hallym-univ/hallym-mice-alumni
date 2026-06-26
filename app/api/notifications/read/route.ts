@@ -1,5 +1,6 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notificationReadSchema } from "@/lib/validators";
 
 /**
  * POST /api/notifications/read — 알림 읽음 처리 (§6.8). 회원 전용.
@@ -14,7 +15,14 @@ export const POST = withAuth(
       return Response.json({ error: "잘못된 요청이에요." }, { status: 400 });
     }
 
-    const { id, all } = (body ?? {}) as { id?: unknown; all?: unknown };
+    const parsed = notificationReadSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "id 또는 all 이 필요해요." },
+        { status: 422 },
+      );
+    }
+    const { id, all } = parsed.data;
     const admin = createAdminClient();
     const now = new Date().toISOString();
 
@@ -27,7 +35,7 @@ export const POST = withAuth(
       if (error) {
         return Response.json({ error: "처리에 실패했어요." }, { status: 500 });
       }
-    } else if (typeof id === "string" && id) {
+    } else if (id) {
       const { error } = await admin
         .from("notifications")
         .update({ read_at: now })
@@ -36,8 +44,6 @@ export const POST = withAuth(
       if (error) {
         return Response.json({ error: "처리에 실패했어요." }, { status: 500 });
       }
-    } else {
-      return Response.json({ error: "id 또는 all 이 필요해요." }, { status: 400 });
     }
 
     return Response.json({ ok: true });
