@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "security:check": "node scripts/security-check.mjs",
+    "events:rollup": "node scripts/rollup-events.mjs",
     "check": "npm run typecheck && npm run lint && npm run security:check && npm run build && npm run security:check && npm run test:e2e"
   },
   "dependencies": {

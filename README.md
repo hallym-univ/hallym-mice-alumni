@@ -126,6 +126,15 @@ vercel --prod          # 프로덕션 배포
 ### Supabase pause 방지 (무료 티어 필수)
 cron-job.org / UptimeRobot로 5~10분마다 `https://<도메인>/api/health` 호출(무인증 200). 7일 비활성 시 Supabase 자동 정지를 막는다.
 
+### 이벤트 로그 롤업/파기
+`events` 원본은 90일 보존 후 `event_daily`로 집계하고 삭제한다. 운영 cron 또는 관리자 PC의 안전한 셸에서 아래 명령을 주 1회 이상 실행한다.
+
+```bash
+npm run events:rollup
+```
+
+보존 기간을 임시 조정해야 하면 `EVENT_RETENTION_DAYS=120 npm run events:rollup` 또는 `npm run events:rollup -- --retention-days=120` 형식으로 실행한다. 이 명령은 `SUPABASE_SERVICE_ROLE_KEY`를 사용하므로 브라우저나 공개 CI에서 실행하지 않는다.
+
 ---
 
 ## 출시 전 체크리스트

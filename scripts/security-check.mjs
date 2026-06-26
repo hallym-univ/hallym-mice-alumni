@@ -347,6 +347,39 @@ function checkOperationalIndexes() {
   }
 }
 
+function checkEventRetentionRollup() {
+  const migration = read("supabase/migrations/0008_event_retention_rollup.sql");
+  for (const fragment of [
+    "rollup_expired_events",
+    "retention_days integer default 90",
+    "insert into public.event_daily",
+    "delete from public.events",
+    "revoke all on function public.rollup_expired_events(integer) from public",
+    "grant execute on function public.rollup_expired_events(integer) to service_role",
+  ]) {
+    if (!migration.includes(fragment)) {
+      addFailure(`supabase/migrations/0008_event_retention_rollup.sql: missing ${fragment}`);
+    }
+  }
+
+  const script = read("scripts/rollup-events.mjs");
+  for (const fragment of [
+    "/rest/v1/rpc/rollup_expired_events",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "retention_days",
+  ]) {
+    if (!script.includes(fragment)) {
+      addFailure(`scripts/rollup-events.mjs: missing ${fragment}`);
+    }
+  }
+
+  const pkg = JSON.parse(read("package.json"));
+  if (pkg.scripts?.["events:rollup"] !== "node scripts/rollup-events.mjs") {
+    addFailure("package.json: missing events:rollup script");
+  }
+}
+
 function checkPostgrestSearchSanitization() {
   const search = read("lib/search.ts");
   for (const fragment of [
@@ -652,6 +685,7 @@ checkApiMutationBodyGuard();
 checkHighRiskMutationRateLimits();
 checkUploadSigningPolicy();
 checkOperationalIndexes();
+checkEventRetentionRollup();
 checkPostgrestSearchSanitization();
 checkListQueryParamValidation();
 checkAdminQueryParamValidation();
