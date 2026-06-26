@@ -145,7 +145,7 @@ export function CommentsPanel({
         <>
           {items.length > 0 ? (
             <div className="space-y-2">
-              {items.slice(0, 5).map((comment) => (
+              {items.map((comment) => (
                 <div key={comment.id} className="flex gap-2">
                   <Avatar
                     src={comment.author?.photo_url ?? null}

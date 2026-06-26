@@ -6,6 +6,7 @@ import { checkDailyLimit, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { commentInputSchema, resolveRouteUuidParam } from "@/lib/validators";
 
 type Params = { id: string };
+const COMMENT_PREVIEW_LIMIT = 5;
 const COMMENT_CREATE_DAILY_LIMIT = 80;
 const COMMENT_CREATE_PER_POST_DAILY_LIMIT = 20;
 
@@ -15,7 +16,7 @@ export const GET = withAuth<Params>(
     if (!id) return Response.json({ error: "잘못된 경로예요." }, { status: 400 });
 
     try {
-      const items = await listComments(id);
+      const items = await listComments(id, COMMENT_PREVIEW_LIMIT);
       return Response.json({ items });
     } catch (e) {
       console.error("[GET /api/posts/:id/comments]", e);

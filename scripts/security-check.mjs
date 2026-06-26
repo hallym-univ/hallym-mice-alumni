@@ -799,6 +799,37 @@ function checkProtectedRouteCachePolicy() {
   }
 }
 
+function checkConnectCommentPreviewLimit() {
+  const queries = read("lib/connect/queries.ts");
+  for (const fragment of [
+    "MAX_COMMENT_PREVIEW_LIMIT",
+    "limit = 5",
+    "normalizedLimit",
+    '.order("created_at", { ascending: false })',
+    ".limit(normalizedLimit)",
+    ".toReversed()",
+  ]) {
+    if (!queries.includes(fragment)) {
+      addFailure(`lib/connect/queries.ts: missing bounded comment preview fragment ${fragment}`);
+    }
+  }
+
+  const route = read("app/api/posts/[id]/comments/route.ts");
+  for (const fragment of [
+    "COMMENT_PREVIEW_LIMIT = 5",
+    "listComments(id, COMMENT_PREVIEW_LIMIT)",
+  ]) {
+    if (!route.includes(fragment)) {
+      addFailure(`app/api/posts/[id]/comments/route.ts: comments API must use bounded preview fragment ${fragment}`);
+    }
+  }
+
+  const panel = read("components/connect/CommentsPanel.tsx");
+  if (panel.includes("items.slice(0, 5)")) {
+    addFailure("components/connect/CommentsPanel.tsx: comment limit belongs in the server query, not client slice");
+  }
+}
+
 function checkExternalLinks(files) {
   for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
     const source = read(rel);
@@ -1046,6 +1077,7 @@ checkListQueryParamValidation();
 checkAdminQueryParamValidation();
 checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
+checkConnectCommentPreviewLimit();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkMarkdownUrlPolicy();

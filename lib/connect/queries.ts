@@ -36,6 +36,7 @@ export interface CommentListItem {
 
 const POST_SELECT =
   "id,author_id,title,body,post_type,external_url,status,created_at,updated_at";
+const MAX_COMMENT_PREVIEW_LIMIT = 20;
 
 export async function listPublishedPosts(
   me: AuthContext,
@@ -71,19 +72,26 @@ export async function listPostsByProfile(
   return shapePosts(me, (data ?? []) as PostRow[]);
 }
 
-export async function listComments(postId: string): Promise<CommentListItem[]> {
+export async function listComments(
+  postId: string,
+  limit = 5,
+): Promise<CommentListItem[]> {
+  const normalizedLimit = Math.min(
+    Math.max(1, Math.trunc(limit)),
+    MAX_COMMENT_PREVIEW_LIMIT,
+  );
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("comments")
     .select("id,post_id,author_id,body,status,created_at,updated_at")
     .eq("post_id", postId)
     .eq("status", "published")
-    .order("created_at", { ascending: true })
-    .limit(50);
+    .order("created_at", { ascending: false })
+    .limit(normalizedLimit);
 
   if (error) throw new Error(`[comments] 목록 조회 실패: ${error.message}`);
 
-  const rows = (data ?? []) as CommentRow[];
+  const rows = ((data ?? []) as CommentRow[]).toReversed();
   const authors = await fetchAuthors(rows.map((row) => row.author_id));
   return rows.map((row) => ({
     id: row.id,
