@@ -101,6 +101,9 @@ function rejectInvalidMutationBody(req: Request): Response | null {
     return jsonError(413, "요청 본문이 너무 큽니다.");
   }
   if (bodyBytes === 0) return null;
+  if (!isJsonContentType(contentType)) {
+    return jsonError(415, "JSON 요청만 처리할 수 있어요.");
+  }
 
   return null;
 }

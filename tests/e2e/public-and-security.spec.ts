@@ -92,6 +92,15 @@ test("mutating APIs reject invalid request bodies before auth lookup", async ({ 
   expect(unsupportedHeaderOnly.headers()["cache-control"]).toContain("no-store");
   await expectJson(unsupportedHeaderOnly, { error: "JSON 요청만 처리할 수 있어요." });
 
+  const missingContentType = await request.fetch("/api/events", {
+    method: "POST",
+    data: "eventType=profile_view",
+    headers: {},
+  });
+  expect(missingContentType.status()).toBe(415);
+  expect(missingContentType.headers()["cache-control"]).toContain("no-store");
+  await expectJson(missingContentType, { error: "JSON 요청만 처리할 수 있어요." });
+
   const unsupported = await request.post("/api/events", {
     data: "eventType=profile_view",
     headers: { "content-type": "text/plain" },
