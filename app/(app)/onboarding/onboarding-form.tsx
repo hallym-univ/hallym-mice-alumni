@@ -136,7 +136,7 @@ function ConsentRow({
             <a
               href={href}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="underline text-muted-foreground"
             >
               (보기)

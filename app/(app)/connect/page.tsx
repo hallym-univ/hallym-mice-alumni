@@ -215,7 +215,7 @@ function PostAttachment({ href, title }: { href: string; title: string }) {
       {content}
     </Link>
   ) : (
-    <a href={href} target="_blank" rel="noreferrer" className="block">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="block">
       {content}
     </a>
   );
