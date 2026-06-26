@@ -205,7 +205,7 @@ async function fetchEngagementCounts(
   if (postIds.length === 0) return map;
 
   const admin = createAdminClient();
-  const runEngagementRpc = admin.rpc as unknown as EngagementCountRpc;
+  const runEngagementRpc = admin.rpc.bind(admin) as unknown as EngagementCountRpc;
   const { data, error } = await runEngagementRpc("get_post_engagement_counts", {
     post_ids: postIds,
   });

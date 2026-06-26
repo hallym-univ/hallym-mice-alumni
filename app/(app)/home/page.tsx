@@ -210,7 +210,7 @@ const EMPTY_HOME_STATS: HomeNetworkStats = {
 
 async function fetchHomeNetworkStats(since: string): Promise<HomeNetworkStats> {
   const admin = createAdminClient();
-  const runStatsRpc = admin.rpc as unknown as HomeNetworkStatsRpc;
+  const runStatsRpc = admin.rpc.bind(admin) as unknown as HomeNetworkStatsRpc;
   const { data, error } = await runStatsRpc("get_home_network_stats", { since });
   if (error) {
     console.warn("[home] network stats RPC unavailable", error.message);
