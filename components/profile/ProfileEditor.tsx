@@ -232,11 +232,6 @@ export function ProfileEditor({
         </div>
       </div>
 
-      {state === "saved" ? (
-        <Alert variant="success">
-          <AlertDescription>저장했어요.</AlertDescription>
-        </Alert>
-      ) : null}
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -371,6 +366,11 @@ export function ProfileEditor({
 
       {/* 연락 */}
       <Section title="연락">
+        <p className="text-xs text-muted-foreground">
+          커피챗 상태는 연결 가능성을 보여주는 신호예요. 오픈카톡 URL을 공개하면
+          회원이 바로 대화 링크로 이동하고, 제안 수신을 켜면 플랫폼 중계로 연락을
+          받을 수 있어요.
+        </p>
         <Field label="커피챗 상태">
           <Select value={form.coffeechat_status} onValueChange={(v) => set("coffeechat_status", v as CoffeechatStatus)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -385,8 +385,8 @@ export function ProfileEditor({
           <Input value={form.open_kakao_url} onChange={(e) => set("open_kakao_url", e.target.value)} placeholder="https://open.kakao.com/..." />
         </Field>
         <ToggleRow
-          label="제안 이메일 수신 허용"
-          description="오픈카톡이 없을 때 다른 회원이 서버 중계로 제안을 보낼 수 있어요."
+          label="협업·채용 제안 수신 허용"
+          description="이메일 주소는 공개하지 않고, 플랫폼이 이메일·앱 알림으로 중계해요."
           checked={form.proposal_email_allowed}
           onChange={(v) => set("proposal_email_allowed", v)}
         />
@@ -408,9 +408,14 @@ export function ProfileEditor({
         ))}
       </Section>
 
-      <Button className="w-full" size="lg" onClick={save} disabled={state === "saving"}>
-        {state === "saving" ? "저장 중..." : "저장하기"}
-      </Button>
+      <div className="space-y-2">
+        <Button className="w-full" size="lg" onClick={save} disabled={state === "saving"}>
+          {state === "saving" ? "저장 중..." : "저장하기"}
+        </Button>
+        {state === "saved" ? (
+          <p className="text-center text-sm text-emerald-600">프로필이 저장됐어요.</p>
+        ) : null}
+      </div>
     </div>
   );
 }

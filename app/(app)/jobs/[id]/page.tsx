@@ -4,8 +4,10 @@ import { after } from "next/server";
 import { ArrowLeft, Building2, CalendarClock, MapPin } from "lucide-react";
 
 import { JobActions } from "@/components/jobs/JobActions";
+import { Avatar } from "@/components/profile/Avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/common/EmptyState";
 import { requireMemberPage } from "@/lib/guards/page";
 import { getPublishedJob } from "@/lib/jobs/queries";
@@ -87,7 +89,6 @@ export default async function JobDetailPage({
           <p className="flex items-center gap-1.5">
             <Building2 className="h-4 w-4" />
             {j.organization}
-            {j.author ? ` · ${j.author.name}` : ""}
           </p>
           {j.location ? (
             <p className="flex items-center gap-1.5">
@@ -125,6 +126,23 @@ export default async function JobDetailPage({
                 </Badge>
               ))}
             </div>
+          </div>
+        ) : null}
+        {j.author ? (
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground">관련 동문</h2>
+            <Link href={`/alumni/${j.author.id}`} className="mt-2 block">
+              <Card className="flex items-center gap-3 p-3 transition-colors hover:bg-accent/40">
+                <Avatar src={j.author.photo_url} name={j.author.name} size={40} />
+                <div className="min-w-0">
+                  <p className="font-medium">{j.author.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {[j.author.organization, j.author.position].filter(Boolean).join(" · ") ||
+                      "이 기회를 공유한 동문"}
+                  </p>
+                </div>
+              </Card>
+            </Link>
           </div>
         ) : null}
       </section>

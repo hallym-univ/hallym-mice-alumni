@@ -403,6 +403,41 @@ export const jobInputSchema = z.object({
 
 export type JobInput = z.infer<typeof jobInputSchema>;
 
+// ── Phase 2.5 — 커넥트(posts) ─────────────────────────────────────────────────
+
+export const postTypeSchema = z.enum(["story", "question", "project", "event", "link"]);
+
+export const postInputSchema = z.object({
+  title: z.string().trim().min(1, "제목을 입력해주세요.").max(160),
+  body: z.string().trim().min(1, "내용을 입력해주세요.").max(3000),
+  post_type: postTypeSchema.default("story"),
+  external_url: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v === undefined ? undefined : v && v.length > 0 ? v : null))
+    .refine(
+      (v) => {
+        if (v === null || v === undefined) return true;
+        try {
+          return new URL(v).protocol === "https:";
+        } catch {
+          return false;
+        }
+      },
+      { message: "외부 링크는 https 주소만 등록할 수 있어요." },
+    ),
+  tag_ids: z.array(z.string().uuid()).max(10).optional(),
+});
+
+export const commentInputSchema = z.object({
+  body: z.string().trim().min(1, "댓글을 입력해주세요.").max(1000),
+});
+
+export type PostInput = z.infer<typeof postInputSchema>;
+export type CommentInput = z.infer<typeof commentInputSchema>;
+
 // ── Phase 3 — 콘텐츠(articles) ─────────────────────────────────────────────────
 
 /** 콘텐츠 상태머신(draft→published→hidden). */

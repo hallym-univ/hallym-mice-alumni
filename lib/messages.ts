@@ -52,9 +52,10 @@ export const CONSENT = {
   required: "필수 항목에 모두 동의해야 가입할 수 있어요.",
 } as const;
 
-/** 하단 탭 라벨(4탭: 홈/동문/기회/내 정보). */
+/** 하단 탭 라벨(5탭: 홈/커넥트/동문/기회/내 정보). */
 export const TABS = {
   home: "홈",
+  connect: "커넥트",
   alumni: "동문",
   jobs: "기회",
   me: "내 정보",

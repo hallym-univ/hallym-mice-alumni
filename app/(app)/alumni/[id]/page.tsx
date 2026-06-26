@@ -7,8 +7,11 @@ import { Avatar } from "@/components/profile/Avatar";
 import { ContactActions } from "@/components/profile/ContactActions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/common/EmptyState";
 import { requireMemberPage } from "@/lib/guards/page";
+import { listPostsByProfile } from "@/lib/connect/queries";
+import { listPublishedJobsByAuthor } from "@/lib/jobs/queries";
 import { getProfileDetail } from "@/lib/profile/queries";
 import { recordEvent, makeCohortHash } from "@/lib/analytics/events";
 import {
@@ -57,6 +60,10 @@ export default async function ProfileDetailPage({
   }
 
   const p = result.profile;
+  const [activityPosts, activityJobs] = await Promise.all([
+    listPostsByProfile(me, p.id, 3).catch(() => []),
+    listPublishedJobsByAuthor(me, p.id, 3).catch(() => []),
+  ]);
 
   // 조회수 신호(본인 조회는 제외) — after()로 응답 전송 후 기록(렌더를 막지 않음).
   if (!p.is_self) {
@@ -138,6 +145,30 @@ export default async function ProfileDetailPage({
                 <Badge key={t.id} variant="secondary">
                   {t.name}
                 </Badge>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {activityPosts.length > 0 || activityJobs.length > 0 ? (
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground">동문 활동</h2>
+            <div className="mt-2 space-y-2">
+              {activityPosts.map((post) => (
+                <Link key={post.id} href="/connect">
+                  <Card className="p-3 transition-colors hover:bg-accent/40">
+                    <p className="text-xs text-muted-foreground">커넥트 게시글</p>
+                    <p className="mt-1 line-clamp-1 text-sm font-medium">{post.title}</p>
+                  </Card>
+                </Link>
+              ))}
+              {activityJobs.map((job) => (
+                <Link key={job.id} href={`/jobs/${job.id}`}>
+                  <Card className="p-3 transition-colors hover:bg-accent/40">
+                    <p className="text-xs text-muted-foreground">공유한 기회</p>
+                    <p className="mt-1 line-clamp-1 text-sm font-medium">{job.title}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{job.organization}</p>
+                  </Card>
+                </Link>
               ))}
             </div>
           </div>

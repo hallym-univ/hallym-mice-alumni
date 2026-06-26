@@ -23,8 +23,8 @@ import type { PublicProfileDetail } from "@/lib/profile/visibility";
 /**
  * 프로필 상세 연락 영역 (§6.3 / §11.4 / T-204·T-205·T-206).
  *
- *  1) 오픈카톡 공개 시 "오픈카톡으로 연결" 버튼(클릭=coffeechat_click 기록 후 새 탭).
- *  2) 없거나 비공개면 제안 이메일(서버 중계 폼, proposal_email_click 기록).
+ *  1) 오픈카톡 공개 시 "오픈카톡으로 바로 대화" 버튼(클릭=coffeechat_click 기록 후 새 탭).
+ *  2) 제안 수신 허용 시 서버 중계 제안 폼(proposal_email_click 기록).
  *  3) 신고 / 차단.
  * 실제 이메일·원문은 응답·UI 어디에도 노출하지 않는다.
  */
@@ -68,7 +68,7 @@ export function ContactActions({ profile }: { profile: PublicProfileDetail }) {
       {profile.open_kakao_url ? (
         <Button className="w-full" size="lg" onClick={openKakao}>
           <MessageCircle className="h-4 w-4" />
-          오픈카톡으로 연결
+          오픈카톡으로 바로 대화
         </Button>
       ) : profile.proposal_email_allowed ? (
         <Button
@@ -77,7 +77,7 @@ export function ContactActions({ profile }: { profile: PublicProfileDetail }) {
           onClick={() => setProposalOpen(true)}
         >
           <Send className="h-4 w-4" />
-          이메일 제안 보내기
+          협업·채용 제안 보내기
         </Button>
       ) : (
         <p className="rounded-md border px-3 py-2 text-center text-sm text-muted-foreground">
@@ -93,8 +93,15 @@ export function ContactActions({ profile }: { profile: PublicProfileDetail }) {
           onClick={() => setProposalOpen(true)}
         >
           <Send className="h-4 w-4" />
-          이메일 제안 보내기
+          협업·채용 제안 보내기
         </Button>
+      ) : null}
+
+      {profile.open_kakao_url || profile.proposal_email_allowed ? (
+        <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+          오픈카톡은 즉시 대화 링크로 이동하고, 제안은 플랫폼이 이메일·앱 알림으로
+          중계해 전달해요.
+        </p>
       ) : null}
 
       <div className="flex gap-2">
@@ -156,6 +163,9 @@ function ProposalDialog({
   const [message, setMessage] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [delivery, setDelivery] = useState<"email_and_in_app" | "in_app" | null>(
+    null,
+  );
 
   async function send() {
     setState("sending");
@@ -172,6 +182,7 @@ function ProposalDialog({
         setState("error");
         return;
       }
+      setDelivery(data.delivery === "email_and_in_app" ? "email_and_in_app" : "in_app");
       setState("sent");
     } catch {
       setError("전송에 실패했어요.");
@@ -180,13 +191,17 @@ function ProposalDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setState("idle"); setMessage(""); setError(null); } }}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setState("idle"); setMessage(""); setError(null); setDelivery(null); } }}>
       <DialogContent>
         {state === "sent" ? (
           <>
             <DialogHeader>
               <DialogTitle>{CONTACT.proposalSent.title}</DialogTitle>
-              <DialogDescription>{CONTACT.proposalSent.cta}</DialogDescription>
+              <DialogDescription>
+                {delivery === "email_and_in_app"
+                  ? CONTACT.proposalSent.cta
+                  : "이메일 대신 앱 알림으로 전달했어요. 상대가 알림에서 확인할 수 있어요."}
+              </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button onClick={() => onOpenChange(false)}>닫기</Button>
@@ -197,8 +212,8 @@ function ProposalDialog({
             <DialogHeader>
               <DialogTitle>{targetName} 님에게 제안</DialogTitle>
               <DialogDescription>
-                플랫폼이 중계해 전달돼요. 상대의 이메일·내 이메일은 공개되지
-                않아요.
+                채용·협업·프로젝트 제안을 플랫폼이 중계해 전달해요. 상대의
+                이메일·내 이메일은 공개되지 않아요.
               </DialogDescription>
             </DialogHeader>
             {error ? (

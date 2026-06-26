@@ -26,6 +26,9 @@ export type JobType =
   | "etc";
 export type JobStatus = "draft" | "pending" | "published" | "closed" | "hidden";
 export type ArticleStatus = "draft" | "published" | "hidden";
+export type PostType = "story" | "question" | "project" | "event" | "link";
+export type PostStatus = "draft" | "published" | "hidden";
+export type CommentStatus = "published" | "hidden";
 
 /** 필드별 공개 토글 (profiles.field_visibility jsonb). 키 없음 = 기본 공개. */
 export type FieldVisibility = Partial<
@@ -228,6 +231,39 @@ export type ArticleRow = {
   updated_at: string;
 }
 
+export type PostRow = {
+  id: string;
+  author_id: string;
+  title: string;
+  body: string;
+  post_type: PostType;
+  external_url: string | null;
+  status: PostStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PostTagRow = {
+  post_id: string;
+  tag_id: string;
+}
+
+export type PostLikeRow = {
+  post_id: string;
+  profile_id: string;
+  created_at: string;
+}
+
+export type CommentRow = {
+  id: string;
+  post_id: string;
+  author_id: string;
+  body: string;
+  status: CommentStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 /**
  * Insert/Update 타입 derivation 헬퍼.
  * - id/created_at/updated_at 등 DB default 가 있는 컬럼은 Insert 에서 optional.
@@ -292,6 +328,10 @@ export interface Database {
       job_tags: TableDef<JobTagRow>;
       job_bookmarks: TableDef<JobBookmarkRow>;
       articles: TableDef<ArticleRow, "status">;
+      posts: TableDef<PostRow, "post_type" | "status">;
+      post_tags: TableDef<PostTagRow>;
+      post_likes: TableDef<PostLikeRow>;
+      comments: TableDef<CommentRow, "status">;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

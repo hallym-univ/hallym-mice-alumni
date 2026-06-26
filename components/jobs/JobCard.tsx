@@ -36,6 +36,11 @@ export function JobCard({ job }: { job: JobListItem }) {
           {job.organization}
           {job.location ? ` · ${job.location}` : ""}
         </p>
+        {job.author ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            관련 동문 · {job.author.name}
+          </p>
+        ) : null}
         {job.tags.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {job.tags.slice(0, 3).map((t) => (

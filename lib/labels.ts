@@ -4,6 +4,7 @@ import type {
   EmploymentStatus,
   JobStatus,
   JobType,
+  PostType,
   ProfileRole,
 } from "@/types/database";
 
@@ -120,6 +121,24 @@ export const JOB_STATUS_TONE: Record<
   closed: "outline",
   hidden: "destructive",
 };
+
+// ── 커넥트 ────────────────────────────────────────────────────────────────────
+
+export const POST_TYPE_LABEL: Record<PostType, string> = {
+  story: "경험 공유",
+  question: "질문",
+  project: "프로젝트",
+  event: "행사/모임",
+  link: "자료 공유",
+};
+
+export const POST_TYPE_OPTIONS: { value: PostType; label: string }[] = [
+  { value: "story", label: POST_TYPE_LABEL.story },
+  { value: "question", label: POST_TYPE_LABEL.question },
+  { value: "project", label: POST_TYPE_LABEL.project },
+  { value: "event", label: POST_TYPE_LABEL.event },
+  { value: "link", label: POST_TYPE_LABEL.link },
+];
 
 // ── 콘텐츠(Phase 3) ───────────────────────────────────────────────────────────
 

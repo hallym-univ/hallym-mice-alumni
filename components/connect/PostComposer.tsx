@@ -1,0 +1,152 @@
+"use client";
+
+import { useState } from "react";
+
+import { useRouter } from "next/navigation";
+import { FilePlus2, Send } from "lucide-react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { POST_TYPE_OPTIONS } from "@/lib/labels";
+import type { PostType } from "@/types/database";
+
+export interface ImportableContent {
+  id: string;
+  label: string;
+  title: string;
+  body: string;
+  postType: PostType;
+  href: string;
+}
+
+export function PostComposer({
+  importableItems = [],
+}: {
+  importableItems?: ImportableContent[];
+}) {
+  const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [postType, setPostType] = useState<PostType>("story");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function applyInternalContent(value: string) {
+    const item = importableItems.find((candidate) => candidate.id === value);
+    if (!item) return;
+    setTitle(item.title);
+    setBody(`${item.body}\n\n관련 콘텐츠: ${item.href}`);
+    setPostType(item.postType);
+  }
+
+  async function submit() {
+    const normalizedBody = body.trim();
+    const normalizedTitle = title.trim() || deriveTitle(normalizedBody);
+
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: normalizedTitle,
+          body: normalizedBody,
+          post_type: postType,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "게시글 저장에 실패했어요.");
+        return;
+      }
+      setTitle("");
+      setBody("");
+      setPostType("story");
+      router.refresh();
+    } catch {
+      setError("게시글 저장에 실패했어요.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-card p-4">
+      <div className="grid grid-cols-[1fr_auto] gap-2">
+        <Select onValueChange={applyInternalContent}>
+          <SelectTrigger>
+            <SelectValue placeholder="내부 콘텐츠에서 가져오기" />
+          </SelectTrigger>
+          <SelectContent>
+            {importableItems.length > 0 ? (
+              importableItems.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.label}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="empty" disabled>
+                가져올 콘텐츠가 없어요
+              </SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+        <Select value={postType} onValueChange={(v) => setPostType(v as PostType)}>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {POST_TYPE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Textarea
+        value={body}
+        onChange={(e) => {
+          setBody(e.target.value);
+          if (title) setTitle("");
+        }}
+        placeholder="동문에게 공유할 경험, 질문, 프로젝트 모집, 행사 소식을 적어보세요."
+        rows={4}
+        maxLength={3000}
+      />
+
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <FilePlus2 className="h-3.5 w-3.5" />
+          제목은 첫 문장에서 자동으로 만들어져요.
+        </p>
+        <Button onClick={submit} disabled={busy || !body.trim()}>
+          <Send className="h-4 w-4" />
+          {busy ? "등록 중" : "등록"}
+        </Button>
+      </div>
+
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+    </div>
+  );
+}
+
+function deriveTitle(body: string) {
+  const firstLine =
+    body.split("\n").find((line) => line.trim())?.trim() ?? "새 동문 소식";
+  return firstLine.length > 60 ? `${firstLine.slice(0, 57)}...` : firstLine;
+}

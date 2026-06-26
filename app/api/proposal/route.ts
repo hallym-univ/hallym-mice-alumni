@@ -91,13 +91,6 @@ export const POST = withAuth(
       message,
     });
 
-    if (result.status === "failed") {
-      return Response.json(
-        { error: "제안 전송에 실패했어요. 잠시 후 다시 시도해주세요." },
-        { status: 502 },
-      );
-    }
-
     // 이벤트 기록(클릭/전송) — rate limit 카운팅에도 사용.
     try {
       await recordEvent({
@@ -110,17 +103,23 @@ export const POST = withAuth(
       console.error("[proposal] event 기록 실패", e);
     }
 
-    // 수신자에게 인앱 알림(인박스/벨). 발신자 프로필로 이동 링크.
+    // 수신자에게 인앱 알림(인박스/벨). 이메일 실패 시에도 앱 안에서는 전달한다.
     await createInAppNotification({
       profileId: target.id,
       type: "proposal",
       title: "새 제안이 도착했어요",
-      message: `${me.profile.name} 님이 제안을 보냈어요.`,
+      message:
+        result.status === "failed"
+          ? `${me.profile.name} 님의 제안이 앱 알림으로 도착했어요.`
+          : `${me.profile.name} 님이 제안을 보냈어요.`,
       link: `/alumni/${me.profile.id}`,
     });
 
-    // status==='skipped'(RESEND 미설정) 도 사용자에겐 접수 완료로 응답(개발환경).
-    return Response.json({ ok: true });
+    // sent/skipped/failed 모두 앱 알림으로 보강된다. 클라이언트는 전달 경로만 구분한다.
+    return Response.json({
+      ok: true,
+      delivery: result.status === "sent" ? "email_and_in_app" : "in_app",
+    });
   },
   { role: "member" },
 );

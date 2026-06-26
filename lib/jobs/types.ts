@@ -8,6 +8,9 @@ import type { JobStatus, JobType, TagRow } from "@/types/database";
 export interface JobAuthor {
   id: string;
   name: string;
+  organization: string | null;
+  position: string | null;
+  photo_url: string | null;
 }
 
 export interface JobListItem {

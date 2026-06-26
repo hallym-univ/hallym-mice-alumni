@@ -2,8 +2,9 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeSearchTerm } from "@/lib/search";
+import { getPublicUrl } from "@/lib/storage";
 import type { AuthContext } from "@/lib/guards/withAuth";
-import type { JobRow, JobType, TagRow } from "@/types/database";
+import type { JobRow, JobType, ProfileRow, TagRow } from "@/types/database";
 import type {
   JobAuthor,
   JobDetail,
@@ -157,6 +158,23 @@ export async function listMyJobs(me: AuthContext): Promise<JobListItem[]> {
   return shapeJobList(me, (data ?? []) as never);
 }
 
+/** 특정 동문이 공유한 공개 공고 — 프로필 활동 노출용. */
+export async function listPublishedJobsByAuthor(
+  me: AuthContext,
+  profileId: string,
+  limit = 3,
+): Promise<JobListItem[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("jobs")
+    .select(LIST_COLS)
+    .eq("author_id", profileId)
+    .eq("status", "published")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return shapeJobList(me, (data ?? []) as never);
+}
+
 /** 내가 북마크한 공고(게시중/마감) — 최신 북마크 순. */
 export async function listBookmarkedJobs(me: AuthContext): Promise<JobListItem[]> {
   const admin = createAdminClient();
@@ -255,9 +273,21 @@ async function fetchAuthors(ids: string[]): Promise<Map<string, JobAuthor>> {
   const unique = [...new Set(ids)];
   if (unique.length === 0) return map;
   const admin = createAdminClient();
-  const { data } = await admin.from("profiles").select("id,name").in("id", unique);
-  for (const p of (data ?? []) as Array<{ id: string; name: string }>) {
-    map.set(p.id, { id: p.id, name: p.name });
+  const { data } = await admin
+    .from("profiles")
+    .select("id,name,organization,position,photo_path")
+    .in("id", unique);
+  for (const p of (data ?? []) as Pick<
+    ProfileRow,
+    "id" | "name" | "organization" | "position" | "photo_path"
+  >[]) {
+    map.set(p.id, {
+      id: p.id,
+      name: p.name,
+      organization: p.organization,
+      position: p.position,
+      photo_url: p.photo_path ? getPublicUrl(p.photo_path) : null,
+    });
   }
   return map;
 }

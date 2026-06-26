@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Briefcase, Home, User, Users } from "lucide-react";
+import { Briefcase, Home, MessagesSquare, User, Users } from "lucide-react";
 
 import { TABS } from "@/lib/messages";
 import { cn } from "@/lib/utils";
 
 /**
- * 하단 고정 4탭 네비게이션 (§5.1): 홈 / 동문 / 기회 / 내 정보.
+ * 하단 고정 5탭 네비게이션 (§5.1): 홈 / 커넥트 / 동문 / 기회 / 내 정보.
  * 모바일 우선(375px). 터치 타깃 44px 이상.
  * 온보딩 등 풀스크린 라우트에서는 자동으로 숨긴다.
  *
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
  */
 const ITEMS = [
   { href: "/home", label: TABS.home, icon: Home },
+  { href: "/connect", label: TABS.connect, icon: MessagesSquare },
   { href: "/alumni", label: TABS.alumni, icon: Users },
   { href: "/jobs", label: TABS.jobs, icon: Briefcase },
   { href: "/me", label: TABS.me, icon: User },
