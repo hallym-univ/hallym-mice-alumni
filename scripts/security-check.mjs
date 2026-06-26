@@ -461,6 +461,26 @@ function checkUserExternalUrlPolicy() {
   }
 }
 
+function checkDataMinimization() {
+  const jobMutationRoute = read("app/api/jobs/[id]/route.ts");
+  if (!jobMutationRoute.includes('.select("id, author_id, status")')) {
+    addFailure("app/api/jobs/[id]/route.ts: job access check must use minimal columns");
+  }
+  if (jobMutationRoute.includes('.select("*")')) {
+    addFailure("app/api/jobs/[id]/route.ts: job mutation route must not select all columns");
+  }
+
+  const jobQueries = read("lib/jobs/queries.ts");
+  for (const fragment of [
+    "const DETAIL_COLS",
+    ".select(DETAIL_COLS)",
+  ]) {
+    if (!jobQueries.includes(fragment)) {
+      addFailure(`lib/jobs/queries.ts: missing job detail column policy fragment ${fragment}`);
+    }
+  }
+}
+
 function checkListQueryParamValidation() {
   const validators = read("lib/validators/index.ts");
   for (const fragment of [
@@ -747,6 +767,7 @@ checkOperationalIndexes();
 checkEventRetentionRollup();
 checkPostgrestSearchSanitization();
 checkUserExternalUrlPolicy();
+checkDataMinimization();
 checkListQueryParamValidation();
 checkAdminQueryParamValidation();
 checkClientWritableEventTypes();

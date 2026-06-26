@@ -28,6 +28,8 @@ export interface JobFilters {
 const DEFAULT_LIMIT = 20;
 const LIST_COLS =
   "id,author_id,title,organization,job_type,location,deadline,compensation,status,created_at";
+const DETAIL_COLS =
+  "id,author_id,title,organization,job_type,location,deadline,compensation,description,requirements,apply_url,contact,status,created_at,updated_at";
 
 /** 게시중 공고 목록/검색. status='published' 만. */
 export async function listPublishedJobs(
@@ -106,7 +108,7 @@ export async function getPublishedJob(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("jobs")
-    .select("*")
+    .select(DETAIL_COLS)
     .eq("id", jobId)
     .maybeSingle<JobRow>();
 

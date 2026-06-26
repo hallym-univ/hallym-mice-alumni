@@ -13,6 +13,7 @@ import type { JobRow } from "@/types/database";
  *       status 직접 변경은 입력 스키마에 없다.
  */
 type Params = { id: string };
+type JobAccessRow = Pick<JobRow, "id" | "author_id" | "status">;
 
 export const PATCH = withAuth<Params>(
   async (req, { me, params }) => {
@@ -29,9 +30,9 @@ export const PATCH = withAuth<Params>(
     const admin = createAdminClient();
     const { data: existing, error: loadErr } = await admin
       .from("jobs")
-      .select("*")
+      .select("id, author_id, status")
       .eq("id", id)
-      .maybeSingle<JobRow>();
+      .maybeSingle<JobAccessRow>();
     if (loadErr || !existing) {
       return Response.json({ error: "공고를 찾을 수 없어요." }, { status: 404 });
     }
