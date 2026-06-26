@@ -438,6 +438,25 @@ function checkPostgrestSearchSanitization() {
   }
 }
 
+function checkUserExternalUrlPolicy() {
+  const source = read("lib/validators/index.ts");
+  for (const fragment of [
+    "function isSafeHttpsUrl",
+    "url.protocol === \"https:\"",
+    "!url.username",
+    "!url.password",
+    "!url.port",
+    "u.hostname === \"open.kakao.com\"",
+    "apply_url:",
+    "external_url:",
+    "return isSafeHttpsUrl(value)",
+  ]) {
+    if (!source.includes(fragment)) {
+      addFailure(`lib/validators/index.ts: missing user external URL policy fragment ${fragment}`);
+    }
+  }
+}
+
 function checkListQueryParamValidation() {
   const validators = read("lib/validators/index.ts");
   for (const fragment of [
@@ -723,6 +742,7 @@ checkRemoteImageImportPolicy();
 checkOperationalIndexes();
 checkEventRetentionRollup();
 checkPostgrestSearchSanitization();
+checkUserExternalUrlPolicy();
 checkListQueryParamValidation();
 checkAdminQueryParamValidation();
 checkClientWritableEventTypes();

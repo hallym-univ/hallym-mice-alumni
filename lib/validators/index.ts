@@ -8,18 +8,33 @@ import { normalizeHashtags } from "@/lib/albums/hashtags";
  * 영상은 YouTube videoId만 추출/저장한다(§3.1, §6.5).
  */
 
+function parseUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+function isSafeHttpsUrl(value: string): boolean {
+  const url = parseUrl(value);
+  if (!url) return false;
+  return (
+    url.protocol === "https:" &&
+    !url.username &&
+    !url.password &&
+    !url.port
+  );
+}
+
 /** https + open.kakao.com 호스트만 허용하는 오픈카톡 URL. */
 export const openKakaoUrlSchema = z
   .string()
   .trim()
   .url("올바른 URL 형식이 아니에요.")
   .refine((value) => {
-    try {
-      const u = new URL(value);
-      return u.protocol === "https:" && u.hostname === "open.kakao.com";
-    } catch {
-      return false;
-    }
+    const u = parseUrl(value);
+    return Boolean(u && isSafeHttpsUrl(value) && u.hostname === "open.kakao.com");
   }, "오픈카톡 링크(https://open.kakao.com/...)만 등록할 수 있어요.");
 
 /** 일반 외부 링크(https 강제). 공고 지원 URL 등에 사용. */
@@ -27,13 +42,7 @@ export const httpsUrlSchema = z
   .string()
   .trim()
   .url("올바른 URL 형식이 아니에요.")
-  .refine((value) => {
-    try {
-      return new URL(value).protocol === "https:";
-    } catch {
-      return false;
-    }
-  }, "https 링크만 허용돼요.");
+  .refine(isSafeHttpsUrl, "https 링크만 허용돼요.");
 
 /**
  * YouTube URL → videoId 추출. 유효하지 않으면 null.
@@ -382,12 +391,8 @@ const optionalOpenKakao = z
   .refine(
     (v) => {
       if (v === null || v === undefined) return true;
-      try {
-        const u = new URL(v);
-        return u.protocol === "https:" && u.hostname === "open.kakao.com";
-      } catch {
-        return false;
-      }
+      const u = parseUrl(v);
+      return Boolean(u && isSafeHttpsUrl(v) && u.hostname === "open.kakao.com");
     },
     { message: "오픈카톡 링크(https://open.kakao.com/...)만 등록할 수 있어요." },
   );
@@ -614,11 +619,7 @@ export const jobInputSchema = z.object({
     .refine(
       (v) => {
         if (v === null || v === undefined) return true;
-        try {
-          return new URL(v).protocol === "https:";
-        } catch {
-          return false;
-        }
+        return isSafeHttpsUrl(v);
       },
       { message: "지원 링크는 https 주소만 등록할 수 있어요." },
     ),
@@ -672,7 +673,7 @@ function isAllowedPostUrl(value: string): boolean {
   }
 
   try {
-    return new URL(value).protocol === "https:";
+    return isSafeHttpsUrl(value);
   } catch {
     return false;
   }
