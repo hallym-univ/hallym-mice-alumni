@@ -2,7 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublicUrl } from "@/lib/storage";
-import { sanitizeSearchTerm } from "@/lib/search";
+import { toSafeIlikePattern } from "@/lib/search";
 import {
   toProfileCard,
   toProfileDetail,
@@ -82,10 +82,12 @@ export async function listDirectory(
   }
 
   if (filters.q) {
-    const term = `%${sanitizeSearchTerm(filters.q)}%`;
-    query = query.or(
-      `name.ilike.${term},organization.ilike.${term},position.ilike.${term}`,
-    );
+    const term = toSafeIlikePattern(filters.q);
+    if (term) {
+      query = query.or(
+        `name.ilike.${term},organization.ilike.${term},position.ilike.${term}`,
+      );
+    }
   }
   if (filters.organization) {
     query = query.ilike("organization", `%${filters.organization}%`);

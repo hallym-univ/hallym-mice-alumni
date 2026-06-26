@@ -281,6 +281,29 @@ function checkOperationalIndexes() {
   }
 }
 
+function checkPostgrestSearchSanitization() {
+  const search = read("lib/search.ts");
+  for (const fragment of [
+    "sanitizeSearchTerm",
+    "toSafeIlikePattern",
+    "return term ? `%${term}%` : null",
+  ]) {
+    if (!search.includes(fragment)) {
+      addFailure(`lib/search.ts: missing PostgREST search sanitization fragment ${fragment}`);
+    }
+  }
+
+  for (const rel of ["lib/profile/queries.ts", "lib/jobs/queries.ts", "app/api/admin/members/route.ts"]) {
+    const source = read(rel);
+    if (!source.includes("toSafeIlikePattern")) {
+      addFailure(`${rel}: PostgREST .or() search must use toSafeIlikePattern`);
+    }
+    if (source.includes("sanitizeSearchTerm(") || /`%\\$\\{[^}]+\\}%`/.test(source)) {
+      addFailure(`${rel}: build search patterns through toSafeIlikePattern`);
+    }
+  }
+}
+
 function checkClientWritableEventTypes() {
   const source = read("lib/validators/index.ts");
   const start = source.indexOf("export const clientEventInputSchema");
@@ -469,6 +492,7 @@ checkApiMutationBodyGuard();
 checkHighRiskMutationRateLimits();
 checkUploadSigningPolicy();
 checkOperationalIndexes();
+checkPostgrestSearchSanitization();
 checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
 checkExternalLinks(files);

@@ -12,3 +12,9 @@ export function sanitizeSearchTerm(input: string): string {
     .trim()
     .slice(0, 100);
 }
+
+export function toSafeIlikePattern(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const term = sanitizeSearchTerm(input);
+  return term ? `%${term}%` : null;
+}

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sanitizeSearchTerm } from "@/lib/search";
+import { toSafeIlikePattern } from "@/lib/search";
 import { getPublicUrl } from "@/lib/storage";
 import type { AuthContext } from "@/lib/guards/withAuth";
 import type { JobRow, JobType, ProfileRow, TagRow } from "@/types/database";
@@ -53,8 +53,10 @@ export async function listPublishedJobs(
     query = query.in("id", ids);
   }
   if (filters.q) {
-    const term = `%${sanitizeSearchTerm(filters.q)}%`;
-    query = query.or(`title.ilike.${term},organization.ilike.${term}`);
+    const term = toSafeIlikePattern(filters.q);
+    if (term) {
+      query = query.or(`title.ilike.${term},organization.ilike.${term}`);
+    }
   }
   if (filters.jobType) {
     query = query.eq("job_type", filters.jobType);

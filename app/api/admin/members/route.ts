@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recordAdminLog } from "@/lib/admin/log";
 import { withAuth } from "@/lib/guards/withAuth";
-import { sanitizeSearchTerm } from "@/lib/search";
+import { toSafeIlikePattern } from "@/lib/search";
 import { adminMemberPatchSchema, profileStatusSchema } from "@/lib/validators";
 import type { ProfileRow } from "@/types/database";
 
@@ -35,10 +35,12 @@ export const GET = withAuth(
 
     if (q) {
       // 이름/소속/직함 부분 검색(pg_trgm 인덱스 활용). .or() 필터 인젝션 방지.
-      const pattern = `%${sanitizeSearchTerm(q)}%`;
-      query = query.or(
-        `name.ilike.${pattern},organization.ilike.${pattern},position.ilike.${pattern}`,
-      );
+      const pattern = toSafeIlikePattern(q);
+      if (pattern) {
+        query = query.or(
+          `name.ilike.${pattern},organization.ilike.${pattern},position.ilike.${pattern}`,
+        );
+      }
     }
 
     if (statusParam && statusParam !== "all") {
