@@ -101,12 +101,17 @@ export const DELETE = withAuth(
     }
 
     const admin = createAdminClient();
-    const [{ count, error: countError }, target] = await Promise.all([
-      admin.from("admins").select("id", { count: "exact", head: true }),
+    const [adminRows, targetAdmin, target] = await Promise.all([
+      admin.from("admins").select("profile_id").limit(2),
+      admin
+        .from("admins")
+        .select("id")
+        .eq("profile_id", profileId)
+        .maybeSingle<{ id: string }>(),
       getTargetProfile(admin, profileId),
     ]);
 
-    if (countError) {
+    if (adminRows.error || targetAdmin.error) {
       return Response.json(
         { error: "관리자 권한 조회에 실패했어요." },
         { status: 500 },
@@ -115,7 +120,10 @@ export const DELETE = withAuth(
     if (!target) {
       return Response.json({ error: "회원을 찾을 수 없어요." }, { status: 404 });
     }
-    if ((count ?? 0) <= 1) {
+    if (!targetAdmin.data) {
+      return Response.json({ ok: true, isAdmin: false });
+    }
+    if ((adminRows.data?.length ?? 0) <= 1) {
       return Response.json(
         { error: "마지막 관리자는 해제할 수 없어요." },
         { status: 400 },

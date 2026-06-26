@@ -1207,6 +1207,40 @@ function checkNotificationUnreadCountPolicy() {
   }
 }
 
+function checkAdminAccessBoundedLookupPolicy() {
+  const auth = read("lib/guards/withAuth.ts");
+  for (const fragment of [
+    "existingAdmins",
+    '.from("admins")',
+    '.select("id")',
+    ".limit(1)",
+    "isBootstrapAdmin = (existingAdmins?.length ?? 0) === 0",
+  ]) {
+    if (!auth.includes(fragment)) {
+      addFailure(`lib/guards/withAuth.ts: bootstrap admin check must keep bounded lookup fragment ${fragment}`);
+    }
+  }
+  if (auth.includes('count: "exact"') || auth.includes("count: 'exact'")) {
+    addFailure("lib/guards/withAuth.ts: auth/admin checks must not exact-count admins");
+  }
+
+  const adminsRoute = read("app/api/admin/admins/route.ts");
+  for (const fragment of [
+    '.select("profile_id")',
+    ".limit(2)",
+    "targetAdmin",
+    '.eq("profile_id", profileId)',
+    "마지막 관리자는 해제할 수 없어요.",
+  ]) {
+    if (!adminsRoute.includes(fragment)) {
+      addFailure(`app/api/admin/admins/route.ts: admin revoke must keep bounded lookup fragment ${fragment}`);
+    }
+  }
+  if (adminsRoute.includes('count: "exact"') || adminsRoute.includes("count: 'exact'")) {
+    addFailure("app/api/admin/admins/route.ts: admin revoke must not exact-count admins");
+  }
+}
+
 function checkExternalLinks(files) {
   for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
     const source = read(rel);
@@ -1463,6 +1497,7 @@ checkConnectEngagementAggregation();
 checkHomeNetworkStatsAggregation();
 checkMemberListPaginationPolicy();
 checkNotificationUnreadCountPolicy();
+checkAdminAccessBoundedLookupPolicy();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkMarkdownUrlPolicy();

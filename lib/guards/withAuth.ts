@@ -243,13 +243,14 @@ const loadAuth = cache(async (): Promise<AuthContext | null> => {
   let isBootstrapAdmin = false;
 
   if (!hasAdminRow && email !== null && env.adminEmails.includes(email.toLowerCase())) {
-    const { count, error: countError } = await admin
+    const { data: existingAdmins, error: adminLookupError } = await admin
       .from("admins")
-      .select("id", { count: "exact", head: true });
-    if (countError) {
+      .select("id")
+      .limit(1);
+    if (adminLookupError) {
       throw new AuthError(403, "관리자 권한 조회에 실패했습니다.");
     }
-    isBootstrapAdmin = (count ?? 0) === 0;
+    isBootstrapAdmin = (existingAdmins?.length ?? 0) === 0;
   }
 
   const isAdmin = hasAdminRow || isBootstrapAdmin;
