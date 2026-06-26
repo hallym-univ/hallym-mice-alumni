@@ -149,6 +149,8 @@ export const uploadContentTypeSchema = z.enum([
   "image/gif",
 ]);
 
+export const uploadScopeSchema = z.enum(["album", "cover", "content", "profile"]);
+
 /** 앨범 생성/수정 입력. youtube 는 videoId 로 변환되거나 null. */
 export const albumInputSchema = z.object({
   title: z.string().trim().min(1, "제목을 입력해주세요.").max(200),

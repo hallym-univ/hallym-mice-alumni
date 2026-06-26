@@ -10,6 +10,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * 정밀 분산 카운팅이 필요해지면 전용 테이블로 승격할 수 있으나, v1 규모에선 충분하다.
  */
 
+export class RateLimitUnavailableError extends Error {
+  constructor(message = "요청 제한 확인에 실패했습니다.") {
+    super(message);
+    this.name = "RateLimitUnavailableError";
+  }
+}
+
 function startOfTodayUtcISO(): string {
   const now = new Date();
   const start = new Date(
@@ -41,10 +48,8 @@ export async function countTodayEvents(params: {
 
   const { count, error } = await query;
   if (error) {
-    // 카운트 실패 시 보수적으로 한도 초과로 취급하지 않고 0으로(가용성 우선).
-    // 단, 호출부가 한도와 비교하므로 0 반환은 "허용" 쪽이다. 로깅만.
     console.error("[rate-limit] count 실패:", error.message);
-    return 0;
+    throw new RateLimitUnavailableError();
   }
   return count ?? 0;
 }

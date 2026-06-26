@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { makeCohortHash, recordEvent } from "@/lib/analytics/events";
 import { sendProposalEmail } from "@/lib/email/proposal";
 import { createInAppNotification } from "@/lib/notifications/create";
-import { checkDailyLimit } from "@/lib/rate-limit";
+import { checkDailyLimit, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { proposalSchema } from "@/lib/validators";
 import type { ProfileRow } from "@/types/database";
 
@@ -71,11 +71,22 @@ export const POST = withAuth(
 
     // rate limit: 1일 5건(proposal_email_click 이벤트 카운트 기준).
     const cohortHash = makeCohortHash(me.userId);
-    const rate = await checkDailyLimit({
-      cohortHash,
-      eventType: "proposal_email_click",
-      limit: 5,
-    });
+    let rate: Awaited<ReturnType<typeof checkDailyLimit>>;
+    try {
+      rate = await checkDailyLimit({
+        cohortHash,
+        eventType: "proposal_email_click",
+        limit: 5,
+      });
+    } catch (err) {
+      if (err instanceof RateLimitUnavailableError) {
+        return Response.json(
+          { error: "요청 제한 확인에 실패했어요. 잠시 후 다시 시도해주세요." },
+          { status: 503 },
+        );
+      }
+      throw err;
+    }
     if (!rate.ok) {
       return Response.json(
         { error: "오늘 보낼 수 있는 제안 횟수를 모두 사용했어요(1일 5건)." },

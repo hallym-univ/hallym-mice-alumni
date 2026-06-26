@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { withAuth } from "@/lib/guards/withAuth";
 import { getSignedUploadUrl } from "@/lib/storage";
-import { uploadContentTypeSchema } from "@/lib/validators";
+import { uploadContentTypeSchema, uploadScopeSchema } from "@/lib/validators";
 
 /**
  * POST /api/uploads — R2 presigned PUT URL 발급 (T-154 / §6.5-2, §9.2).
@@ -38,7 +38,11 @@ export const POST = withAuth(
       );
     }
 
-    const scopeStr = typeof scope === "string" ? scope : "album";
+    const scopeParsed = uploadScopeSchema.safeParse(scope ?? "album");
+    if (!scopeParsed.success) {
+      return Response.json({ error: "허용되지 않는 업로드 범위예요." }, { status: 400 });
+    }
+    const scopeStr = scopeParsed.data;
 
     // 회원은 본인 프로필 사진(profile)만, 운영 자산(album/cover/content)은 관리자만.
     if (scopeStr !== "profile" && !me.isAdmin) {

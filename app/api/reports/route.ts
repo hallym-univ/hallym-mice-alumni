@@ -1,7 +1,11 @@
 import { withAuth } from "@/lib/guards/withAuth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { makeCohortHash, recordEvent } from "@/lib/analytics/events";
-import { checkDailyLimit, countTodayEvents } from "@/lib/rate-limit";
+import {
+  checkDailyLimit,
+  countTodayEvents,
+  RateLimitUnavailableError,
+} from "@/lib/rate-limit";
 import { reportSchema } from "@/lib/validators";
 
 /**
@@ -35,11 +39,28 @@ export const POST = withAuth(
     const cohortHash = makeCohortHash(me.userId);
 
     // 1일 10건 한도.
-    const daily = await checkDailyLimit({
-      cohortHash,
-      eventType: "report_submit",
-      limit: 10,
-    });
+    let daily: Awaited<ReturnType<typeof checkDailyLimit>>;
+    let sameTarget: number;
+    try {
+      daily = await checkDailyLimit({
+        cohortHash,
+        eventType: "report_submit",
+        limit: 10,
+      });
+      sameTarget = await countTodayEvents({
+        cohortHash,
+        eventType: "report_submit",
+        targetId: target_id,
+      });
+    } catch (err) {
+      if (err instanceof RateLimitUnavailableError) {
+        return Response.json(
+          { error: "요청 제한 확인에 실패했어요. 잠시 후 다시 시도해주세요." },
+          { status: 503 },
+        );
+      }
+      throw err;
+    }
     if (!daily.ok) {
       return Response.json(
         { error: "오늘 신고 가능한 횟수를 모두 사용했어요." },
@@ -48,11 +69,6 @@ export const POST = withAuth(
     }
 
     // 동일 대상 1일 1건.
-    const sameTarget = await countTodayEvents({
-      cohortHash,
-      eventType: "report_submit",
-      targetId: target_id,
-    });
     if (sameTarget >= 1) {
       return Response.json(
         { error: "이미 오늘 신고한 대상이에요." },
