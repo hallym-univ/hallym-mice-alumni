@@ -2,6 +2,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 import { publicEnv } from "@/lib/env";
+import { joinPublicAssetUrl } from "@/lib/public-url";
 
 /** Tailwind 클래스 병합 헬퍼 (shadcn 표준) */
 export function cn(...inputs: ClassValue[]) {
@@ -14,9 +15,7 @@ export function cn(...inputs: ClassValue[]) {
  * 서버 전용 lib/storage.getPublicUrl 과 동일 규칙이되, server-only 가드가 없어 컴포넌트에서 쓸 수 있다.
  */
 export function r2PublicUrl(key: string): string {
-  const base = publicEnv.r2PublicBaseUrl.replace(/\/+$/, "");
-  const cleanKey = key.replace(/^\/+/, "");
-  return `${base}/${cleanKey}`;
+  return joinPublicAssetUrl(publicEnv.r2PublicBaseUrl, key);
 }
 
 /**

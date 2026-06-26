@@ -155,6 +155,41 @@ function checkSecurityHeaders() {
   }
 }
 
+function checkPublicAssetUrlPolicy() {
+  const policy = read("lib/public-url.ts");
+  for (const fragment of [
+    "normalizeHttpsPublicBaseUrl",
+    "joinPublicAssetUrl",
+    'url.protocol !== "https:"',
+    "url.username",
+    "url.password",
+  ]) {
+    if (!policy.includes(fragment)) {
+      addFailure(`lib/public-url.ts: missing public asset URL policy fragment ${fragment}`);
+    }
+  }
+
+  const nextConfig = read("next.config.mjs");
+  for (const fragment of [
+    "r2RemotePatterns",
+    'url.protocol !== "https:"',
+    'protocol: "https"',
+    "url.username",
+    "url.password",
+  ]) {
+    if (!nextConfig.includes(fragment)) {
+      addFailure(`next.config.mjs: R2 remotePatterns must be HTTPS-only (${fragment})`);
+    }
+  }
+
+  for (const rel of ["lib/utils.ts", "lib/storage/index.ts"]) {
+    const source = read(rel);
+    if (!source.includes("joinPublicAssetUrl")) {
+      addFailure(`${rel}: R2 public URL assembly must use joinPublicAssetUrl`);
+    }
+  }
+}
+
 function checkSupabaseCookiePolicy() {
   const cookiePolicy = read("lib/supabase/cookies.ts");
   for (const fragment of [
@@ -578,6 +613,7 @@ checkNoClientSecretImports(files);
 checkSensitiveLibsAreServerOnly(files);
 checkApiRoutes();
 checkSecurityHeaders();
+checkPublicAssetUrlPolicy();
 checkSupabaseCookiePolicy();
 checkApiMutationBodyGuard();
 checkHighRiskMutationRateLimits();

@@ -8,6 +8,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { publicEnv } from "@/lib/env";
+import { joinPublicAssetUrl } from "@/lib/public-url";
 import { getServerEnv } from "@/lib/server-env";
 
 /**
@@ -74,9 +75,7 @@ export async function getSignedUploadUrl(
  * DB에는 객체 key 만 저장하고, 표시 직전에 이 함수로 URL을 만든다.
  */
 export function getPublicUrl(key: string): string {
-  const base = publicEnv.r2PublicBaseUrl.replace(/\/+$/, "");
-  const cleanKey = key.replace(/^\/+/, "");
-  return `${base}/${cleanKey}`;
+  return joinPublicAssetUrl(publicEnv.r2PublicBaseUrl, key);
 }
 
 /**

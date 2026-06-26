@@ -4,6 +4,18 @@ import { dirname } from "node:path";
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV !== "production";
 
+function r2RemotePatterns() {
+  const base = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL;
+  if (!base) return [];
+  try {
+    const url = new URL(base);
+    if (url.protocol !== "https:" || url.username || url.password) return [];
+    return [{ protocol: "https", hostname: url.hostname }];
+  } catch {
+    return [];
+  }
+}
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -90,16 +102,7 @@ const nextConfig = {
   images: {
     // AVIF 우선(webp 대비 추가 20~30% 절감), 미지원 브라우저는 webp 폴백.
     formats: ["image/avif", "image/webp"],
-    remotePatterns: (() => {
-      const base = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL;
-      if (!base) return [];
-      try {
-        const url = new URL(base);
-        return [{ protocol: url.protocol.replace(":", ""), hostname: url.hostname }];
-      } catch {
-        return [];
-      }
-    })(),
+    remotePatterns: r2RemotePatterns(),
   },
 };
 
