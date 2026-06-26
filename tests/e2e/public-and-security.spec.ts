@@ -42,7 +42,13 @@ test("public landing page renders and carries security headers", async ({ page }
   await expect(page.getByRole("link", { name: "지금 시작하기" })).toHaveCount(2);
 });
 
-test("protected app route redirects anonymous users to login", async ({ page }) => {
+test("protected app route redirects anonymous users to login", async ({ page, request }) => {
+  const redirect = await request.get("/home", { maxRedirects: 0 });
+  expect([307, 308]).toContain(redirect.status());
+  expect(redirect.headers()["location"]).toContain("/login?next=%2Fhome");
+  expect(redirect.headers()["cache-control"]).toContain("no-store");
+  expect(redirect.headers()["vary"]).toContain("Cookie");
+
   await page.goto("/home");
 
   await expect(page).toHaveURL(/\/login\?next=%2Fhome$/);

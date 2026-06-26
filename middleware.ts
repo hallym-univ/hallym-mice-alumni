@@ -23,12 +23,19 @@ const PUBLIC_PATHS = ["/", "/login", "/terms", "/privacy", "/auth"];
 
 // 프로필이 없어도 접근 가능한 경로(온보딩/로그아웃 등).
 const ONBOARDING_ALLOWED = ["/onboarding"];
+const PROTECTED_ROUTE_CACHE_CONTROL = "no-store, private";
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true;
   return PUBLIC_PATHS.some(
     (p) => p !== "/" && (pathname === p || pathname.startsWith(`${p}/`)),
   );
+}
+
+function withProtectedRouteHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Cache-Control", PROTECTED_ROUTE_CACHE_CONTROL);
+  response.headers.append("Vary", "Cookie");
+  return response;
 }
 
 /** base64url → 문자열(Edge 안전, 패딩 보정). */
@@ -75,6 +82,7 @@ export async function middleware(request: NextRequest) {
   if (isPublicPath(pathname)) {
     return response;
   }
+  response = withProtectedRouteHeaders(response);
 
   // ② 링크 프리페치 요청은 "토큰이 아직 유효할 때만" 통과 — 화면당 N회 프리페치 × Auth 왕복 제거.
   //    만료/임박 토큰으로 통과시키면 RSC 렌더 중 토큰 회전이 일어나는데 쿠키 기록이 유실되어
@@ -107,7 +115,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          response = NextResponse.next({ request });
+          response = withProtectedRouteHeaders(NextResponse.next({ request }));
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           );
@@ -126,7 +134,7 @@ export async function middleware(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    return withProtectedRouteHeaders(NextResponse.redirect(loginUrl));
   }
 
   // 로그인했으나 프로필 미생성 → /onboarding
@@ -138,14 +146,14 @@ export async function middleware(request: NextRequest) {
   if (!hasProfile && !isOnboardingPath) {
     const onboardingUrl = request.nextUrl.clone();
     onboardingUrl.pathname = "/onboarding";
-    return NextResponse.redirect(onboardingUrl);
+    return withProtectedRouteHeaders(NextResponse.redirect(onboardingUrl));
   }
 
   // 이미 프로필 있는데 온보딩 페이지로 오면 홈으로.
   if (hasProfile && isOnboardingPath) {
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = "/home";
-    return NextResponse.redirect(homeUrl);
+    return withProtectedRouteHeaders(NextResponse.redirect(homeUrl));
   }
 
   return response;

@@ -192,6 +192,22 @@ function checkApiMutationBodyGuard() {
   }
 }
 
+function checkProtectedRouteCachePolicy() {
+  const source = read("middleware.ts");
+  for (const fragment of [
+    "PROTECTED_ROUTE_CACHE_CONTROL",
+    '"no-store, private"',
+    '"Cache-Control"',
+    '"Vary"',
+    '"Cookie"',
+    "withProtectedRouteHeaders",
+  ]) {
+    if (!source.includes(fragment)) {
+      addFailure(`middleware.ts: missing protected route cache policy fragment ${fragment}`);
+    }
+  }
+}
+
 function checkExternalLinks(files) {
   for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
     const source = read(rel);
@@ -335,6 +351,7 @@ checkApiRoutes();
 checkSecurityHeaders();
 checkSupabaseCookiePolicy();
 checkApiMutationBodyGuard();
+checkProtectedRouteCachePolicy();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkEnvFiles();
