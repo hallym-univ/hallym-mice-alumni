@@ -33,6 +33,7 @@ import {
  * 데이터(이름/사진/관리자여부)는 (app)/layout 이 서버에서 주입한다.
  */
 const HIDDEN_PREFIXES = ["/onboarding"];
+const UNREAD_LABEL_MAX = 99;
 
 export function AppHeader({
   name,
@@ -64,7 +65,7 @@ export function AppHeader({
         <div className="flex items-center gap-1">
           <Link
             href="/notifications"
-            aria-label={unread > 0 ? `알림 ${unread}개` : "알림"}
+            aria-label={notificationAriaLabel(unread)}
             className="relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Bell className="h-5 w-5" />
@@ -116,6 +117,12 @@ export function AppHeader({
       </div>
     </header>
   );
+}
+
+function notificationAriaLabel(unread: number): string {
+  if (unread <= 0) return "알림";
+  if (unread > UNREAD_LABEL_MAX) return `알림 ${UNREAD_LABEL_MAX}개 이상`;
+  return `알림 ${unread}개`;
 }
 
 function MenuLink({

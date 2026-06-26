@@ -1184,6 +1184,29 @@ function checkMemberListPaginationPolicy() {
   }
 }
 
+function checkNotificationUnreadCountPolicy() {
+  const notifications = read("lib/notifications/queries.ts");
+  for (const fragment of [
+    "UNREAD_COUNT_QUERY_LIMIT",
+    '.select("id")',
+    ".is(\"read_at\", null)",
+    ".order(\"created_at\", { ascending: false })",
+    ".limit(limit)",
+  ]) {
+    if (!notifications.includes(fragment)) {
+      addFailure(`lib/notifications/queries.ts: unread count must keep bounded lookup fragment ${fragment}`);
+    }
+  }
+  if (notifications.includes('count: "exact"') || notifications.includes("count: 'exact'")) {
+    addFailure("lib/notifications/queries.ts: unread count must not run exact counts in app layout");
+  }
+
+  const header = read("components/common/AppHeader.tsx");
+  if (!header.includes("UNREAD_LABEL_MAX") || !header.includes("개 이상")) {
+    addFailure("components/common/AppHeader.tsx: capped unread counts must use a 99+ aria label");
+  }
+}
+
 function checkExternalLinks(files) {
   for (const rel of files.filter((f) => /\.(ts|tsx)$/.test(f))) {
     const source = read(rel);
@@ -1439,6 +1462,7 @@ checkConnectCommentPreviewLimit();
 checkConnectEngagementAggregation();
 checkHomeNetworkStatsAggregation();
 checkMemberListPaginationPolicy();
+checkNotificationUnreadCountPolicy();
 checkExternalLinks(files);
 checkNoDangerousHtml(files);
 checkMarkdownUrlPolicy();
