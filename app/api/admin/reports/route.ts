@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recordAdminLog } from "@/lib/admin/log";
 import { withAuth } from "@/lib/guards/withAuth";
-import { adminReportPatchSchema, reportStatusSchema } from "@/lib/validators";
+import { adminReportListQuerySchema, adminReportPatchSchema } from "@/lib/validators";
 import type { ProfileRow, ReportRow } from "@/types/database";
 
 /**
@@ -19,8 +19,15 @@ import type { ProfileRow, ReportRow } from "@/types/database";
 
 export const GET = withAuth(
   async (req) => {
-    const url = new URL(req.url);
-    const statusParam = url.searchParams.get("status");
+    const sp = new URL(req.url).searchParams;
+    const parsed = adminReportListQuerySchema.safeParse(Object.fromEntries(sp));
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "검색 조건을 확인해주세요." },
+        { status: 400 },
+      );
+    }
+    const { status } = parsed.data;
 
     const admin = createAdminClient();
     let query = admin
@@ -29,12 +36,8 @@ export const GET = withAuth(
       .order("created_at", { ascending: false })
       .limit(100);
 
-    if (statusParam && statusParam !== "all") {
-      const parsed = reportStatusSchema.safeParse(statusParam);
-      if (!parsed.success) {
-        return Response.json({ error: "잘못된 상태 필터예요." }, { status: 400 });
-      }
-      query = query.eq("status", parsed.data);
+    if (status && status !== "all") {
+      query = query.eq("status", status);
     }
 
     const { data, error } = await query;

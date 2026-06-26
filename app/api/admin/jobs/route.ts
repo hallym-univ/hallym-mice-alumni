@@ -2,8 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { recordAdminLog } from "@/lib/admin/log";
 import { createInAppNotification } from "@/lib/notifications/create";
 import { withAuth } from "@/lib/guards/withAuth";
-import { adminJobStatusPatchSchema, jobStatusSchema } from "@/lib/validators";
-import type { JobRow, JobStatus } from "@/types/database";
+import { adminJobListQuerySchema, adminJobStatusPatchSchema } from "@/lib/validators";
+import type { JobRow } from "@/types/database";
 
 /**
  * 공고 승인/관리 API (§6.4 / §6.7). 관리자 전용.
@@ -14,7 +14,15 @@ import type { JobRow, JobStatus } from "@/types/database";
  */
 export const GET = withAuth(
   async (req) => {
-    const statusParam = new URL(req.url).searchParams.get("status");
+    const sp = new URL(req.url).searchParams;
+    const parsed = adminJobListQuerySchema.safeParse(Object.fromEntries(sp));
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "검색 조건을 확인해주세요." },
+        { status: 400 },
+      );
+    }
+    const { status } = parsed.data;
 
     const admin = createAdminClient();
     let query = admin
@@ -23,13 +31,9 @@ export const GET = withAuth(
       .order("created_at", { ascending: false })
       .limit(100);
 
-    if (statusParam && statusParam !== "all") {
-      const parsed = jobStatusSchema.safeParse(statusParam);
-      if (!parsed.success) {
-        return Response.json({ error: "잘못된 상태 필터예요." }, { status: 400 });
-      }
-      query = query.eq("status", parsed.data);
-    } else if (!statusParam) {
+    if (status && status !== "all") {
+      query = query.eq("status", status);
+    } else if (!status) {
       query = query.eq("status", "pending"); // 기본 큐 = 승인 대기.
     }
 
@@ -93,7 +97,7 @@ export const PATCH = withAuth(
 
     const { error } = await admin
       .from("jobs")
-      .update({ status: status as JobStatus, updated_at: new Date().toISOString() })
+      .update({ status, updated_at: new Date().toISOString() })
       .eq("id", jobId);
     if (error) {
       return Response.json({ error: "상태 변경에 실패했어요." }, { status: 500 });

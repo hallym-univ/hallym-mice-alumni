@@ -333,6 +333,34 @@ function checkListQueryParamValidation() {
   }
 }
 
+function checkAdminQueryParamValidation() {
+  const validators = read("lib/validators/index.ts");
+  for (const fragment of [
+    "optionalAdminStatusFilterSchema",
+    "adminMemberListQuerySchema",
+    "adminJobListQuerySchema",
+    "adminReportListQuerySchema",
+  ]) {
+    if (!validators.includes(fragment)) {
+      addFailure(`lib/validators/index.ts: missing admin query validation fragment ${fragment}`);
+    }
+  }
+
+  for (const [rel, schema] of [
+    ["app/api/admin/members/route.ts", "adminMemberListQuerySchema"],
+    ["app/api/admin/jobs/route.ts", "adminJobListQuerySchema"],
+    ["app/api/admin/reports/route.ts", "adminReportListQuerySchema"],
+  ]) {
+    const source = read(rel);
+    if (!source.includes(schema) || !source.includes("safeParse(Object.fromEntries(sp))")) {
+      addFailure(`${rel}: admin list query params must be validated with ${schema}`);
+    }
+    if (source.includes("statusParam") || source.includes("searchParams.get(\"q\")")) {
+      addFailure(`${rel}: admin list query params must not be parsed ad hoc`);
+    }
+  }
+}
+
 function checkClientWritableEventTypes() {
   const source = read("lib/validators/index.ts");
   const start = source.indexOf("export const clientEventInputSchema");
@@ -413,11 +441,14 @@ function checkNoDangerousHtml(files) {
 function checkMarkdownUrlPolicy() {
   const policy = read("lib/markdown/url-policy.ts");
   for (const fragment of [
-    "ALLOWED_PROTOCOLS",
+    "ALLOWED_LINK_PROTOCOLS",
+    "ALLOWED_MEDIA_PROTOCOLS",
     '"https:"',
     '"mailto:"',
     '"tel:"',
     'trimmed.startsWith("//")',
+    'key === "src"',
+    'node.tagName === "img"',
     "normalizeMarkdownUrl",
     "markdownUrlTransform",
   ]) {
@@ -554,6 +585,7 @@ checkUploadSigningPolicy();
 checkOperationalIndexes();
 checkPostgrestSearchSanitization();
 checkListQueryParamValidation();
+checkAdminQueryParamValidation();
 checkClientWritableEventTypes();
 checkProtectedRouteCachePolicy();
 checkExternalLinks(files);

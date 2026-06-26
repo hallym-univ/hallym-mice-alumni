@@ -203,6 +203,18 @@ const optionalCoffeechatQuerySchema = z.preprocess(
   z.enum(["open"], { errorMap: () => ({ message: "커피챗 필터가 올바르지 않아요." }) }).optional(),
 );
 
+const optionalAdminStatusFilterSchema = <Schema extends z.ZodTypeAny>(
+  schema: Schema,
+) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value !== "string") return undefined;
+      const trimmed = value.trim();
+      return trimmed ? trimmed : undefined;
+    },
+    z.union([z.literal("all"), schema]).optional(),
+  );
+
 export const profileListQuerySchema = z.object({
   q: optionalQueryTextSchema(100, "검색어는 100자까지 가능해요."),
   organization: optionalQueryTextSchema(100, "소속 필터는 100자까지 가능해요."),
@@ -212,6 +224,15 @@ export const profileListQuerySchema = z.object({
   coffeechat: optionalCoffeechatQuerySchema,
   cursor: optionalCursorSchema,
   limit: optionalLimitSchema,
+});
+
+export const adminMemberListQuerySchema = z.object({
+  q: optionalQueryTextSchema(100, "검색어는 100자까지 가능해요."),
+  status: optionalAdminStatusFilterSchema(profileStatusSchema),
+});
+
+export const adminReportListQuerySchema = z.object({
+  status: optionalAdminStatusFilterSchema(reportStatusSchema),
 });
 
 export async function resolveRouteUuidParam<K extends string>(
@@ -559,6 +580,10 @@ export const jobStatusSchema = z.enum([
   "closed",
   "hidden",
 ]);
+
+export const adminJobListQuerySchema = z.object({
+  status: optionalAdminStatusFilterSchema(jobStatusSchema),
+});
 
 /**
  * 공고 생성/수정 입력.
