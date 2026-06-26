@@ -51,6 +51,36 @@ function jsonError(status: number, message: string): Response {
   });
 }
 
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/**
+ * 브라우저 쿠키 기반 API의 공통 CSRF 방어.
+ * - same-origin/same-site 앱 요청은 통과.
+ * - 명확한 cross-site mutation 은 인증 조회 전에 거부해 DB 왕복도 줄인다.
+ * - Origin/Sec-Fetch-Site 가 없는 서버-서버/CLI 요청은 기존 호환성을 위해 통과.
+ */
+function isBlockedCrossSiteMutation(req: Request): boolean {
+  if (!MUTATING_METHODS.has(req.method.toUpperCase())) return false;
+
+  const secFetchSite = req.headers.get("sec-fetch-site")?.toLowerCase();
+  if (
+    secFetchSite &&
+    secFetchSite !== "same-origin" &&
+    secFetchSite !== "same-site"
+  ) {
+    return true;
+  }
+
+  const origin = req.headers.get("origin");
+  if (!origin) return false;
+
+  try {
+    return new URL(origin).origin !== new URL(req.url).origin;
+  } catch {
+    return true;
+  }
+}
+
 /**
  * 인증 데이터 조회(역할 검사 없음) — React cache() 로 **요청 단위 메모이즈**.
  * 레이아웃·페이지·generateMetadata 가 같은 요청에서 각자 호출해도 실제 조회는 1회.
@@ -159,6 +189,10 @@ export function withAuth<Ctx = Record<string, never>>(
     req: Request,
     routeCtx: { params: Promise<Ctx> },
   ): Promise<Response> => {
+    if (isBlockedCrossSiteMutation(req)) {
+      return jsonError(403, "허용되지 않은 요청입니다.");
+    }
+
     let me: AuthContext;
     try {
       me = await resolveAuth(opts.role);
